@@ -1,0 +1,56 @@
+name: kmovie
+description: Ứng dụng xem phim Flutter
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.4.0
+  get: ^4.7.2
+  supabase_flutter: ^2.9.0
+  shared_preferences: ^2.5.4
+  chewie: ^1.11.3
+  video_player: ^2.9.5
+
+  provider: ^6.1.1
+  speech_to_text: ^7.0.0
+  permission_handler: ^12.0.0+1
+
+  uuid: ^4.5.1
+  wakelock_plus: ^1.4.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/lottie/loading.json
+    - assets/icons/logo.png
+    - assets/images/big-bg.jpg
+    - assets/images/m1.jpg
+    - assets/images/m2.jpg
+    - assets/images/m3.jpg
+    - assets/images/m4.jpg
+    - assets/images/m5.jpg
+    - assets/images/m6.webp
+    - assets/images/m7.jpg
+    - assets/images/m8.jpg
+    - assets/icons/logoapp.png
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/logoapp.png"
+  adaptive_icon_background: "#FF0000"
+  adaptive_icon_foreground: "assets/icons/logoapp.png"
