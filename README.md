@@ -57,6 +57,8 @@
     flutter build apk --release
     ```
 
+5. Cài app: [K-movie](dowload_app)
+
 ## 📁 Cấu trúc thư mục
 
 ```text
