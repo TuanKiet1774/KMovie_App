@@ -19,7 +19,13 @@
 
 ## 📸 Ảnh chụp màn hình
 
-*(Đang cập nhật hình ảnh demo)*
+### Logo App
+
+<div align="center"><img width="200" height="200" alt="logoapp" style="border-radius: 10px;" src="https://github.com/user-attachments/assets/89f1e776-c698-4707-ac99-cfe25f63dde9" /></div>
+
+### Demo
+
+![Demo](https://github.com/user-attachments/assets/82e879c6-d95e-4046-a6b9-bc7f7e1b7e9e)
 
 ## 🚀 Hướng dẫn cài đặt
 
