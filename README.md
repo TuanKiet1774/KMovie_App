@@ -48,12 +48,13 @@
     flutter pub get
     ```
 
-3.  **Cấu hình Supabase (nếu có):**
-    Đảm bảo bạn đã cấu hình các API Key cần thiết trong mã nguồn (nếu yêu cầu file `.env` hoặc cấu hình trực tiếp).
-
-4.  **Chạy ứng dụng:**
+3.  **Chạy ứng dụng:**
     ```bash
     flutter run
+    ```
+4. Xuất file apk
+    ```bash
+    flutter build apk --release
     ```
 
 ## 📁 Cấu trúc thư mục
