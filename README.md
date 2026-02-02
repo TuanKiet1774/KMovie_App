@@ -5,7 +5,6 @@
 ## ✨ Tính năng nổi bật
 
 - **Xem phim chất lượng cao:** Hỗ trợ trình phát video mượt mà, tùy chỉnh linh hoạt (Chewie & Video Player).
-- **Tìm kiếm thông minh:** Tích hợp tính năng tìm kiếm phim bằng **giọng nói** (Speech-to-Text).
 - **Danh sách Xem sau:** Dễ dàng lưu lại những bộ phim yêu thích để xem lại sau.
 - **Giao diện hiện đại (Dark Mode):** Thiết kế theo phong cách tối giản, sang trọng, tối ưu cho trải nghiệm người dùng ban đêm.
 
@@ -25,7 +24,7 @@
 
 ### Demo
 
-![Demo](https://github.com/user-attachments/assets/82e879c6-d95e-4046-a6b9-bc7f7e1b7e9e)
+<img width="2000" height="1106" alt="image" src="https://github.com/user-attachments/assets/55edc359-0de0-4cce-aa22-a92a449f433c" />
 
 ## 🚀 Hướng dẫn cài đặt
 
