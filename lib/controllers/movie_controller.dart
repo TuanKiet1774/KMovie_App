@@ -32,77 +32,91 @@ class MovieController extends GetxController {
   String _currentSearchKeyword = '';
   String get currentSearchKeyword => _currentSearchKeyword;
 
+  // Danh sách phim cho Banner (Slide trên cùng)
+  List<Movie> _bannerMovies = [];
+  List<Movie> get bannerMovies => _bannerMovies;
+
+  // Map chứa danh sách phim theo thể loại cho Home Screen
+  Map<String, List<Movie>> _categoryMovies = {};
+  Map<String, List<Movie>> get categoryMovies => _categoryMovies;
+
+  // Các thể loại hiển thị trên trang chủ
+  final List<String> homeCategories = ['tinh-cam', 'co-trang', 'hanh-dong'];
+  final Map<String, String> categoryTitles = {
+    'tinh-cam': 'Phim Tình Cảm',
+    'co-trang': 'Phim Cổ Trang',
+    'hanh-dong': 'Phim Hành Động',
+  };
+
   @override
   void onInit() {
     super.onInit();
-    loadWatchLater(); // Tải danh sách xem sau ngay khi controller khởi tạo
+    loadWatchLater();
+    loadHomeData(); 
   }
 
-  // Phương thức tải danh sách phim mới nhất
-  Future<void> loadLatestMovies() async {
+  // Tải dữ liệu tổng hợp cho trang chủ
+  Future<void> loadHomeData() async {
     _setLoading(true);
     _clearError();
 
     try {
-      final movies = await MovieApiService.getLatestMovies();
-      _movies = movies;
+      _categoryMovies.clear();
+      
+      // Tải song song cả Banner và Danh sách thể loại để tối ưu tốc độ
+      await Future.wait([
+        // Task 1: Tải Banner
+        MovieApiService.getLatestMovies().then((movies) {
+          _bannerMovies = movies;
+          // Mặc định _movies chính là banner movies khi ở chế độ "Tất cả"
+          _movies = _bannerMovies; 
+        }),
+
+        // Task 2: Tải các categories
+        Future.wait(homeCategories.map((slug) async {
+          try {
+             // Giới hạn 10 phim mỗi category để load nhanh hơn
+             final movies = await MovieApiService.getMoviesByGenre(slug, page: 1, limit: 10);
+             _categoryMovies[slug] = movies;
+          } catch (e) {
+             print('Lỗi tải category $slug: $e');
+             _categoryMovies[slug] = [];
+          }
+        }))
+      ]);
+
+      // Quan trọng: Xóa từ khóa tìm kiếm để quay về giao diện mặc định
       _currentSearchKeyword = '';
       update();
     } catch (e) {
-      _setError('Không thể tải danh sách phim. Vui lòng thử lại sau.');
+      _setError('Không thể tải dữ liệu trang chủ: $e');
     } finally {
       _setLoading(false);
     }
   }
-
-  // Phương thức tìm kiếm phim theo từ khóa
-  Future<void> searchMovies(String keyword) async {
-    if (keyword.trim().isEmpty) {
-      await loadLatestMovies();
-      return;
-    }
-
-    _setLoading(true);
-    _clearError();
-
-    try {
-      final movies = await MovieApiService.searchMovies(keyword.trim());
-      _movies = movies;
-      _currentSearchKeyword = keyword.trim();
-      update();
-    } catch (e) {
-      _setError('Không thể tìm kiếm phim. Vui lòng thử lại sau.');
-    } finally {
-      _setLoading(false);
-    }
-  }
-
-  // Phương thức tải chi tiết phim
-  Future<void> loadMovieDetail(String slug) async {
-    _setLoading(true);
-    _clearError();
-
-    try {
-      final detail = await MovieApiService.getMovieDetail(slug);
-      _currentMovieDetail = detail;
-      update();
-    } catch (e) {
-      _setError('Không thể tải chi tiết phim. Vui lòng thử lại sau.');
-    } finally {
-      _setLoading(false);
-    }
-  }
-
-  // Phương thức tải phim theo thể loại
+  
+  // Phương thức tải phim theo thể loại (được chọn từ dropdown hoặc menu)
   Future<void> loadMoviesByCategory(String categorySlug) async {
     _setLoading(true);
     _clearError();
 
     try {
-      final movies = await MovieApiService.getMoviesByCategory(categorySlug);
-      _movies = movies;
-      _currentSearchKeyword = '';
-      update();
+      if (categorySlug.isEmpty || categorySlug == 'all') {
+        // Nếu chọn "Tất cả", load lại Home Data chuẩn
+        if (_bannerMovies.isEmpty) {
+           await loadHomeData();
+        } else {
+           _movies = _bannerMovies; 
+           _currentSearchKeyword = '';
+           update();
+        }
+      } else {
+        // Nếu chọn thể loại cụ thể => Load danh sách phim của thể loại đó vào _movies (để hiển thị lưới/list chính)
+        final movies = await MovieApiService.getMoviesByGenre(categorySlug, page: 1, limit: 20);
+        _movies = movies;
+        _currentSearchKeyword = '';
+        update();
+      }
     } catch (e) {
       _setError('Không thể tải phim theo thể loại. Vui lòng thử lại sau.');
     } finally {
@@ -124,21 +138,21 @@ class MovieController extends GetxController {
   // Hàm tải danh sách Xem Sau từ Backend API, rồi gọi API lấy chi tiết từng phim
   Future<void> loadWatchLater() async {
     if (_isWatchLaterLoading) return;
-    
+
     _isWatchLaterLoading = true;
     update();
-    
-    final deviceId = await getDeviceId();
 
     try {
-      final List<String> slugs = await MovieApiService.getWatchLaterSlugs(deviceId);
-      final List<Movie> loadedMovies = [];
+      final deviceId = await getDeviceId();
+      final slugs = await MovieApiService.getWatchLaterSlugs(deviceId);
 
-      for (var slug in slugs) {
-        try {
-          final detail = await MovieApiService.getMovieDetail(slug);
-          if (detail != null) {
-            loadedMovies.add(Movie(
+      final movies = await Future.wait(
+        slugs.map((slug) async {
+          try {
+            final detail = await MovieApiService.getMovieDetail(slug);
+            if (detail == null) return null;
+
+            return Movie(
               name: detail.name,
               slug: detail.slug,
               posterUrl: detail.posterUrl,
@@ -147,14 +161,15 @@ class MovieController extends GetxController {
               categories: detail.categories,
               quality: detail.quality,
               language: detail.language,
-            ));
+            );
+          } catch (e) {
+            print('Lỗi khi lấy chi tiết phim $slug: $e');
+            return null;
           }
-        } catch (e) {
-          print('Lỗi khi lấy chi tiết phim $slug: $e');
-        }
-      }
+        }),
+      );
 
-      _watchLaterMovies = loadedMovies;
+      _watchLaterMovies = movies.whereType<Movie>().toList();
     } catch (e) {
       print('Lỗi khi tải danh sách Xem Sau: $e');
       _setError('Không thể tải danh sách xem sau');
@@ -213,12 +228,67 @@ class MovieController extends GetxController {
     _errorMessage = null;
   }
 
+  // Phương thức tải danh sách phim mới nhất
+  Future<void> loadLatestMovies() async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      final movies = await MovieApiService.getLatestMovies();
+      _movies = movies;
+      _currentSearchKeyword = '';
+      update();
+    } catch (e) {
+      _setError('Không thể tải danh sách phim. Vui lòng thử lại sau.');
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Phương thức tìm kiếm phim theo từ khóa
+  Future<void> searchMovies(String keyword) async {
+    if (keyword.trim().isEmpty) {
+      await loadHomeData();
+      return;
+    }
+
+    _setLoading(true);
+    _clearError();
+
+    try {
+      final movies = await MovieApiService.searchMovies(keyword.trim());
+      _movies = movies;
+      _currentSearchKeyword = keyword.trim();
+      update();
+    } catch (e) {
+      _setError('Không thể tìm kiếm phim. Vui lòng thử lại sau.');
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Phương thức tải chi tiết phim
+  Future<void> loadMovieDetail(String slug) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      final detail = await MovieApiService.getMovieDetail(slug);
+      _currentMovieDetail = detail;
+      update();
+    } catch (e) {
+      _setError('Không thể tải chi tiết phim. Vui lòng thử lại sau.');
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   // Phương thức làm mới danh sách phim
   Future<void> refreshMovies() async {
     if (_currentSearchKeyword.isNotEmpty) {
       await searchMovies(_currentSearchKeyword);
     } else {
-      await loadLatestMovies();
+      await loadHomeData();
     }
   }
 }

@@ -97,10 +97,10 @@ class MovieApiService {
   }
 
   // Lấy danh sách phim mới nhất từ API
-  static Future<List<Movie>> getLatestMovies() async {
+  static Future<List<Movie>> getLatestMovies({int page = 1}) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/danh-sach/phim-moi-cap-nhat'),
+        Uri.parse('$baseUrl/danh-sach/phim-moi-cap-nhat?page=$page'),
         headers: {'Content-Type': 'application/json'},
       );
 
@@ -191,11 +191,11 @@ class MovieApiService {
     }
   }
 
-  // Lấy danh sách phim theo thể loại
-  static Future<List<Movie>> getMoviesByCategory(String categorySlug) async {
+  // Lấy danh sách phim theo thể loại có phân trang
+  static Future<List<Movie>> getMoviesByCategory(String categorySlug, {int page = 1, int limit = 10}) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/v1/api/danh-sach/$categorySlug'),
+        Uri.parse('$baseUrl/v1/api/danh-sach/$categorySlug?page=$page&limit=$limit'),
         headers: {'Content-Type': 'application/json'},
       );
 
@@ -213,13 +213,14 @@ class MovieApiService {
   }
 
   // Lấy phim theo thể loại (method mới cho home screen)
-  static Future<List<Movie>> getMoviesByGenre(String genreSlug) async {
+  static Future<List<Movie>> getMoviesByGenre(String genreSlug, {int page = 1, int limit = 10}) async {
     try {
       // Thử các endpoint khác nhau của API phimapi.com
+      // Lưu ý: Endpoint mẫu có thể thay đổi tùy supplier
       List<String> possibleUrls = [
-        '$baseUrl/v1/api/the-loai/$genreSlug',
-        '$baseUrl/danh-sach/$genreSlug',
-        '$baseUrl/the-loai/$genreSlug',
+        '$baseUrl/v1/api/the-loai/$genreSlug?page=$page&limit=$limit',
+        '$baseUrl/v1/api/danh-sach/$genreSlug?page=$page&limit=$limit',
+        '$baseUrl/danh-sach/$genreSlug?page=$page&limit=$limit',
       ];
 
       for (String url in possibleUrls) {
@@ -235,10 +236,10 @@ class MovieApiService {
             // Thử các cấu trúc response khác nhau
             List<dynamic> moviesList = [];
 
-            if (data['items'] != null) {
-              moviesList = data['items'];
-            } else if (data['data'] != null && data['data']['items'] != null) {
+            if (data['data'] != null && data['data']['items'] != null) {
               moviesList = data['data']['items'];
+            } else if (data['items'] != null) {
+              moviesList = data['items'];
             } else if (data is List) {
               moviesList = data;
             }
@@ -253,8 +254,11 @@ class MovieApiService {
         }
       }
 
-      // Nếu không có endpoint nào hoạt động, fallback về tìm kiếm
-      return await _searchMoviesByGenre(genreSlug);
+      // Nếu không có endpoint nào hoạt động, fallback về tìm kiếm (chỉ trang 1)
+      if (page == 1) {
+         return await _searchMoviesByGenre(genreSlug);
+      }
+      return [];
 
     } catch (e) {
       print('Lỗi khi tải phim theo thể loại: $e');

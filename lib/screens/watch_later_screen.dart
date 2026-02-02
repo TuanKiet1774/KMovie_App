@@ -2,9 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../widgets/app_dialogs.dart';
 import '../controllers/movie_controller.dart';
+import '../widgets/movie_card.dart';
 import 'movie_detail_screen.dart';
 
 class WatchLaterScreen extends StatefulWidget {
+  final bool isMainTab;
+
+  const WatchLaterScreen({Key? key, this.isMainTab = false}) : super(key: key);
+
   @override
   _WatchLaterScreenState createState() => _WatchLaterScreenState();
 }
@@ -22,7 +27,9 @@ class _WatchLaterScreenState extends State<WatchLaterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Danh Sách Xem Sau'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Image.asset('assets/icons/logo.png', height: 35),
         centerTitle: true,
       ),
       body: GetBuilder<MovieController>(
@@ -51,116 +58,46 @@ class _WatchLaterScreenState extends State<WatchLaterScreen> {
             onRefresh: () => controller.loadWatchLater(),
             color: Colors.red,
             child: GridView.builder(
-              padding: EdgeInsets.all(12),
+              padding: EdgeInsets.all(16),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 0.65,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: 0.7,
               ),
               itemCount: controller.watchLaterMovies.length,
               itemBuilder: (context, index) {
                 final movie = controller.watchLaterMovies[index];
-                return GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => MovieDetailScreen(movie: movie),
-                      ),
-                    );
-                  },
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Color(0xFF1A1A1A),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 4,
-                            offset: Offset(0, 2),
+                return Stack(
+                  children: [
+                    MovieCard(
+                      movie: movie,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => MovieDetailScreen(movie: movie),
                           ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Stack(
-                              children: [
-                                Positioned.fill(
-                                  child: Image.network(
-                                    movie.posterUrl,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) => Container(
-                                      color: Colors.grey[900],
-                                      child: Icon(Icons.movie, color: Colors.grey),
-                                    ),
-                                  ),
-                                ),
-                                // Gradient overlay
-                                Positioned.fill(
-                                  child: DecoratedBox(
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        begin: Alignment.topCenter,
-                                        end: Alignment.bottomCenter,
-                                        colors: [
-                                          Colors.transparent,
-                                          Colors.black.withOpacity(0.8),
-                                        ],
-                                        stops: [0.6, 1.0],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                // Delete button
-                                Positioned(
-                                  top: 4,
-                                  right: 4,
-                                  child: Material(
-                                    color: Colors.black45,
-                                    shape: CircleBorder(),
-                                    child: IconButton(
-                                      icon: Icon(Icons.close, color: Colors.white, size: 18),
-                                      onPressed: () => _showDeleteDialog(context, controller, movie),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  movie.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  "${movie.year} • ${movie.quality}",
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey[400],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                        );
+                      },
+                    ),
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          icon: Icon(Icons.close, color: Colors.white, size: 18),
+                          constraints: BoxConstraints(minWidth: 32, minHeight: 32),
+                          padding: EdgeInsets.zero,
+                          onPressed: () => _showDeleteDialog(context, controller, movie),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 );
               },
             ),

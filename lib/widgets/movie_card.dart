@@ -32,12 +32,16 @@ class MovieCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Poster phim với overlay
+              // Poster phim với overlay (Flex 67%)
               Expanded(
+                flex: 2,
                 child: _buildPosterSection(),
               ),
-              // Thông tin phim
-              _buildInfoSection(),
+              // Thông tin phim (Flex 33%)
+              Expanded(
+                flex: 1,
+                child: _buildInfoSection(),
+              ),
             ],
           ),
         ),
@@ -77,25 +81,6 @@ class MovieCard extends StatelessWidget {
           ),
         ),
         // Badge chất lượng
-        Positioned(
-          top: 8,
-          right: 8,
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.red,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              movie.quality,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
       ],
     );
   }
@@ -103,30 +88,34 @@ class MovieCard extends StatelessWidget {
   // Xây dựng phần thông tin
   Widget _buildInfoSection() {
     return Container(
-      padding: EdgeInsets.all(12),
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       color: Color(0xFF1A1A1A),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // Tên phim
           Text(
             movie.name,
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              fontSize: 14,
+              fontSize: 13,
               color: Colors.white,
             ),
-            maxLines: 2,
+            maxLines: 1,
             overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.start,
           ),
-          SizedBox(height: 4),
-          // Thông tin phụ
+          SizedBox(height: 2),
+          // Năm
           Text(
-            '${movie.year} • ${movie.language}',
+            '${movie.year}',
             style: TextStyle(
-              color: Colors.grey,
-              fontSize: 12,
+              fontSize: 11,
+              color: Colors.grey[400],
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
