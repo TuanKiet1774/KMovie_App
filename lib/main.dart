@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'controllers/movie_controller.dart';
 import 'screens/home_screen.dart';
 import 'screens/main_screen.dart';
+import 'screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,7 +31,7 @@ class MovieApp extends StatelessWidget {
           elevation: 0,
         ),
       ),
-      home: MainScreen(),
+      home: const SplashScreen(),
     );
   }
 }

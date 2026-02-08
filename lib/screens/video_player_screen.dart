@@ -94,9 +94,21 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       print('═══════════════════════════════════════\n');
 
       if (videoUrl.isNotEmpty) {
+        setState(() {
+          _isLoading = true;
+          _hasError = false;
+          _errorMessage = '';
+        });
         try {
-          _controller?.dispose();
-          _controller = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
+          if (_controller != null) {
+            await _controller!.dispose();
+            _controller = null;
+          }
+          
+          _controller = VideoPlayerController.networkUrl(
+            Uri.parse(videoUrl),
+            formatHint: VideoFormat.hls,
+          );
 
           await _controller!.initialize();
 
@@ -153,6 +165,15 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   void _videoListener() {
     if (_controller != null && _controller!.value.isInitialized) {
+      if (_controller!.value.hasError) {
+        setState(() {
+          _hasError = true;
+          _errorMessage = 'Lỗi khi phát: ${_controller!.value.errorDescription}';
+          _isLoading = false;
+        });
+        return;
+      }
+
       final isPlaying = _controller!.value.isPlaying;
       final isCompleted = _controller!.value.position >= _controller!.value.duration;
 

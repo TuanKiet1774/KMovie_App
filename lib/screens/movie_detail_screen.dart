@@ -286,6 +286,7 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
         ),
       ],
       flexibleSpace: FlexibleSpaceBar(
+        centerTitle: false,
         title: Text(
           widget.movie.name,
           style: TextStyle(
@@ -424,10 +425,11 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
         ? _movieDetail!.description
         : widget.movie.description;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        title: Text(
           'Mô tả',
           style: TextStyle(
             fontSize: 18,
@@ -435,85 +437,77 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
             color: Colors.white,
           ),
         ),
-        SizedBox(height: 8),
-        Text(
-          description.isNotEmpty
-              ? description
-              : 'Chưa có mô tả cho phim này.',
-          style: TextStyle(
-            fontSize: 16,
-            height: 1.5,
-            color: Colors.grey[300],
+        iconColor: Colors.red,
+        collapsedIconColor: Colors.grey,
+        childrenPadding: EdgeInsets.only(bottom: 8),
+        children: [
+          Text(
+            description.isNotEmpty ? description : 'Chưa có mô tả cho phim này.',
+            style: TextStyle(
+              fontSize: 16,
+              height: 1.5,
+              color: Colors.grey[300],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _buildDetailedInfo() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (_movieDetail!.director.isNotEmpty) ...[
-          Text(
-            'Đạo diễn',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        title: Text(
+          'Thông tin chi tiết',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
           ),
-          SizedBox(height: 8),
-          Text(
-            _movieDetail!.director,
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[300],
-            ),
+        ),
+        iconColor: Colors.red,
+        collapsedIconColor: Colors.grey,
+        childrenPadding: EdgeInsets.only(bottom: 8),
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (_movieDetail!.director.isNotEmpty) ...[
+                _buildInfoRow('Đạo diễn', _movieDetail!.director),
+                SizedBox(height: 8),
+              ],
+              if (_movieDetail!.actors.isNotEmpty) ...[
+                _buildInfoRow('Diễn viên', _movieDetail!.actors.join(', ')),
+                SizedBox(height: 8),
+              ],
+              if (_movieDetail!.country.isNotEmpty) ...[
+                _buildInfoRow('Quốc gia', _movieDetail!.country),
+                SizedBox(height: 8),
+              ],
+            ],
           ),
-          SizedBox(height: 16),
         ],
+      ),
+    );
+  }
 
-        if (_movieDetail!.actors.isNotEmpty) ...[
-          Text(
-            'Diễn viên',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: RichText(
+        text: TextSpan(
+          style: TextStyle(fontSize: 16, color: Colors.grey[300], height: 1.4),
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
             ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            _movieDetail!.actors.join(', '),
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[300],
-            ),
-          ),
-          SizedBox(height: 16),
-        ],
-
-        if (_movieDetail!.country.isNotEmpty) ...[
-          Text(
-            'Quốc gia',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            _movieDetail!.country,
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[300],
-            ),
-          ),
-          SizedBox(height: 16),
-        ],
-      ],
+            TextSpan(text: value),
+          ],
+        ),
+      ),
     );
   }
 

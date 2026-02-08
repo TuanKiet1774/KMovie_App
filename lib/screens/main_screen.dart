@@ -7,6 +7,8 @@ import 'package:kmovie/widgets/app_dialogs.dart';
 import 'package:flutter/services.dart';
 
 class MainScreen extends StatefulWidget {
+  const MainScreen({Key? key}) : super(key: key);
+
   @override
   _MainScreenState createState() => _MainScreenState();
 }
