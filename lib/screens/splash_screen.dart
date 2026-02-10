@@ -47,7 +47,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0F0F), // Nền đen sâu đồng bộ với app
+      backgroundColor: Colors.black, // Đồng bộ với màn hình Native Splash đen
       body: Center(
         child: FadeTransition(
           opacity: _fadeAnimation,
@@ -74,7 +74,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     'assets/icons/logoapp.png',
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
-                      // Fallback nếu không tìm thấy file
                       return Container(
                         color: Colors.red,
                         child: const Icon(Icons.movie, size: 60, color: Colors.white),
