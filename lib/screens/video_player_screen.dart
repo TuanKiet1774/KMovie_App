@@ -36,7 +36,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   int _currentServerIndex = 0; // Thêm biến theo dõi server hiện tại
   bool _showControls = true;
   bool _isPlaying = false;
-  bool _isFullScreen = false;
+  bool _isFullScreen = true;
   Timer? _hideControlsTimer;
   double _playbackSpeed = 1.0;
   bool _showForwardIcon = false;
@@ -57,6 +57,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     _initializeVideo();
 
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     WakelockPlus.enable(); // Giữ màn hình luôn sáng
     
     // Bắt đầu lưu lịch sử mỗi 10 giây
@@ -112,6 +116,22 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
           await _controller!.initialize();
 
+          // Lấy vị trí đã lưu cho tập này
+          final prefs = await SharedPreferences.getInstance();
+          final savedPosMs = prefs.getInt('pos_${widget.movieDetail.slug}_${_currentServerIndex}_$_currentEpisodeIndex');
+          Duration startPosition = Duration.zero;
+
+          if (savedPosMs != null && savedPosMs > 0) {
+            startPosition = Duration(milliseconds: savedPosMs);
+          } else if (_isFirstLoad && widget.initialPosition != Duration.zero) {
+            startPosition = widget.initialPosition;
+          }
+          
+          if (startPosition != Duration.zero) {
+            await _controller!.seekTo(startPosition);
+          }
+          _isFirstLoad = false;
+
           setState(() {
             _isLoading = false;
             _hasError = false;
@@ -121,12 +141,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           _isPlaying = true;
           _controller!.setPlaybackSpeed(_playbackSpeed);
           
-          // Nếu là lần đầu tiên load và có vị trí bắt đầu
-          if (_isFirstLoad && widget.initialPosition != Duration.zero) {
-            await _controller!.seekTo(widget.initialPosition);
-            _isFirstLoad = false;
-          }
-
           _controller!.addListener(_videoListener);
 
         } catch (e) {
@@ -622,6 +636,15 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                         onTap: _changePlaybackSpeed,
                         child: Icon(Icons.speed, color: Colors.white, size: 24),
                       ),
+                      // Nút tập tiếp theo
+                      if (widget.movieDetail.episodes[_currentServerIndex].serverData.length > _currentEpisodeIndex + 1)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 15.0),
+                          child: GestureDetector(
+                            onTap: _goToNextEpisode,
+                            child: Icon(Icons.skip_next, color: Colors.white, size: 28),
+                          ),
+                        ),
                       SizedBox(width: 10.0),
                       IconButton(
                         icon: Icon(
@@ -678,6 +701,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       };
 
       await prefs.setString('history_${widget.movieDetail.slug}', json.encode(historyData));
+      
+      // Lưu vị trí xem cho tập cụ thể (phục việc phát tiếp khi chuyển tập)
+      await prefs.setInt('pos_${widget.movieDetail.slug}_${_currentServerIndex}_$_currentEpisodeIndex', _controller!.value.position.inMilliseconds);
+      
       print('💾 Đã lưu lịch sử: ${_controller!.value.position.inSeconds}s (Tập ${_currentEpisodeIndex})');
     } catch (e) {
       print('❌ Lỗi khi lưu lịch sử: $e');
