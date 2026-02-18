@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../models/movie_detail.dart';
+import '../controllers/movie_controller.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   final MovieDetail movieDetail;
@@ -27,7 +29,7 @@ class VideoPlayerScreen extends StatefulWidget {
   _VideoPlayerScreenState createState() => _VideoPlayerScreenState();
 }
 
-class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
+class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindingObserver {
   VideoPlayerController? _controller;
   bool _isLoading = true;
   bool _hasError = false;
@@ -52,6 +54,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _currentEpisodeIndex = widget.initialEpisodeIndex;
     _currentServerIndex = widget.serverIndex; // Khởi tạo server index
     _initializeVideo();
@@ -68,7 +71,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Đảm bảo wakelock được bật lại khi quay lại ứng dụng
+      WakelockPlus.enable();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _controller?.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
@@ -105,8 +117,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         });
         try {
           if (_controller != null) {
-            await _controller!.dispose();
-            _controller = null;
+            // Ngắt listener và xóa controller cũ ngay lập tức để tránh lỗi Build
+            _controller!.removeListener(_videoListener);
+            final oldController = _controller;
+            _controller = null; 
+            setState(() {}); // Buộc UI render lại trạng thái không có video
+            await oldController!.dispose();
           }
           
           _controller = VideoPlayerController.networkUrl(
@@ -142,6 +158,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           _controller!.setPlaybackSpeed(_playbackSpeed);
           
           _controller!.addListener(_videoListener);
+          
+          // Đảm bảo wakelock được bật khi bắt đầu phát
+          WakelockPlus.enable();
+
+          // Đánh dấu tập này đã xem
+          _markCurrentEpisodeAsWatched();
 
         } catch (e) {
           setState(() {
@@ -436,7 +458,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            if (_controller != null && _controller!.value.isInitialized)
+            // Chỉ hiển thị video khi khởi tạo xong và KHÔNG ở trạng thái loading
+            if (!_isLoading && _controller != null && _controller!.value.isInitialized)
               Center(
                 child: AspectRatio(
                   aspectRatio: _controller!.value.aspectRatio,
@@ -444,7 +467,24 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 ),
               ),
 
-            // Double tap detectors for seeking
+            // Nền đen và Loading khi đang tải tập mới
+            if (_isLoading)
+              Container(
+                color: Colors.black,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(color: Colors.red),
+                      SizedBox(height: 16),
+                      Text(
+                        'Đang tải tập mới...',
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             if (_controller != null && _controller!.value.isInitialized)
               Row(
                 children: [
@@ -498,20 +538,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                   ),
                 ],
               ),
-
-            if (_isLoading)
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(color: Colors.red),
-                  SizedBox(height: 16),
-                  Text(
-                    'Đang tải video...',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ],
-              ),
-
+            
             if (_hasError)
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -685,7 +712,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     });
   }
 
-  // Lưu lịch sử xem vào SharedPreferences
+  // Lưu lịch sử xem vào SharedPreferences (Vị trí thời gian)
   Future<void> _saveWatchHistory() async {
     if (_controller == null || !_controller!.value.isInitialized) return;
 
@@ -708,6 +735,23 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       print('💾 Đã lưu lịch sử: ${_controller!.value.position.inSeconds}s (Tập ${_currentEpisodeIndex})');
     } catch (e) {
       print('❌ Lỗi khi lưu lịch sử: $e');
+    }
+  }
+
+  // Đánh dấu tập hiện tại là đã xem
+  Future<void> _markCurrentEpisodeAsWatched() async {
+    try {
+      final currentServer = widget.movieDetail.episodes[_currentServerIndex];
+      final episodeData = currentServer.serverData[_currentEpisodeIndex];
+      
+      final movieController = Get.find<MovieController>();
+      await movieController.markEpisodeAsWatched(
+        widget.movieDetail.slug,
+        currentServer.serverName,
+        episodeData.name,
+      );
+    } catch (e) {
+      print('❌ Lỗi khi đánh dấu tập đã xem: $e');
     }
   }
 }

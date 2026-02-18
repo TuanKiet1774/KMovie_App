@@ -10,6 +10,10 @@ class MovieController extends GetxController {
   List<Movie> _watchLaterMovies = [];
   List<Movie> get watchLaterMovies => _watchLaterMovies;
 
+  // Quản lý tập đã xem theo slug phim
+  final Map<String, Set<String>> _watchedEpisodesByUser = {};
+  Set<String> getWatchedEpisodes(String slug) => _watchedEpisodesByUser[slug] ?? {};
+
   List<Movie> _movies = [];
   List<Movie> get movies => _movies;
 
@@ -188,6 +192,41 @@ class MovieController extends GetxController {
     } catch (e) {
       print('Lỗi khi xóa khỏi Xem Sau: $e');
       throw e; // Re-throw to handle in UI
+    }
+  }
+
+  // Load danh sách tập đã xem từ SharedPreferences
+  Future<void> loadWatchedEpisodes(String movieSlug) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'watched_$movieSlug';
+      final watched = prefs.getStringList(key) ?? [];
+      _watchedEpisodesByUser[movieSlug] = watched.toSet();
+      update();
+    } catch (e) {
+      print('Lỗi khi load tập đã xem cho $movieSlug: $e');
+    }
+  }
+
+  // Đánh dấu tập đã xem và thông báo realtime
+  Future<void> markEpisodeAsWatched(String movieSlug, String serverName, String episodeName) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'watched_$movieSlug';
+      final episodeKey = '${serverName}_${episodeName}';
+      
+      if (!_watchedEpisodesByUser.containsKey(movieSlug)) {
+        _watchedEpisodesByUser[movieSlug] = {};
+      }
+      
+      if (!_watchedEpisodesByUser[movieSlug]!.contains(episodeKey)) {
+        _watchedEpisodesByUser[movieSlug]!.add(episodeKey);
+        await prefs.setStringList(key, _watchedEpisodesByUser[movieSlug]!.toList());
+        print('✅ [Controller] Đã đánh dấu đã xem: $episodeKey');
+        update(); // Thông báo cho UI update realtime
+      }
+    } catch (e) {
+      print('Lỗi khi lưu tập đã xem: $e');
     }
   }
 

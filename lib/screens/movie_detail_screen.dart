@@ -28,8 +28,8 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   bool _isInWatchLater = false;
   String? selectedEpisodeUrl;
 
-  // Danh sách các tập đã xem
-  Set<String> _watchedEpisodes = {};
+  // Tải thông tin từ Controller
+  final MovieController _movieController = Get.find<MovieController>();
 
   // Server được chọn (index)
   int _selectedServerIndex = 0;
@@ -41,37 +41,9 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
   void initState() {
     super.initState();
     _loadMovieDetail();
-    _loadWatchedEpisodes();
+    _movieController.loadWatchedEpisodes(widget.movie.slug);
     _checkWatchLaterStatus();
     _loadWatchHistory();
-  }
-
-  // Load danh sách tập đã xem từ SharedPreferences
-  Future<void> _loadWatchedEpisodes() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final key = 'watched_${widget.movie.slug}';
-      final watched = prefs.getStringList(key) ?? [];
-      setState(() {
-        _watchedEpisodes = watched.toSet();
-      });
-    } catch (e) {
-      print('Lỗi khi load tập đã xem: $e');
-    }
-  }
-
-  // Lưu tập đã xem (bao gồm cả server name để phân biệt)
-  Future<void> _markEpisodeAsWatched(String serverName, String episodeName) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final key = 'watched_${widget.movie.slug}';
-      final episodeKey = '${serverName}_${episodeName}';
-      _watchedEpisodes.add(episodeKey);
-      await prefs.setStringList(key, _watchedEpisodes.toList());
-      setState(() {});
-    } catch (e) {
-      print('Lỗi khi lưu tập đã xem: $e');
-    }
   }
 
   Future<void> _loadMovieDetail() async {
@@ -125,7 +97,8 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     }
 
     // Đánh dấu tập đầu tiên đã xem
-    _markEpisodeAsWatched(
+    _movieController.markEpisodeAsWatched(
+      widget.movie.slug,
       selectedServer.serverName,
       selectedServer.serverData[0].name,
     );
@@ -154,7 +127,10 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
           initialPosition: position,
         ),
       ),
-    ).then((_) => _loadWatchHistory()); // Load lại lịch sử khi quay lại
+    ).then((_) {
+      _loadWatchHistory();
+      // Không cần loadWatchedEpisodes thủ công nữa vì đã có GetBuilder
+    }); // Load lại lịch sử khi quay lại
   }
 
   Future<void> _checkWatchLaterStatus() async {
@@ -593,101 +569,99 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Danh sách tập phim',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        SizedBox(height: 12),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: NeverScrollableScrollPhysics(),
-          itemCount: episodes.length,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 4,
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
-            childAspectRatio: 2.2,
-          ),
-          itemBuilder: (context, index) {
-            final episode = episodes[index];
-            final episodeKey = '${selectedServer.serverName}_${episode.name}';
-            final isWatched = _watchedEpisodes.contains(episodeKey);
-
-            return ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                // Màu cam cho tập đã xem, xám cho tập chưa xem
-                backgroundColor: isWatched ? Colors.orange : Colors.grey[900],
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+    return GetBuilder<MovieController>(
+      builder: (controller) {
+        final watchedEpisodes = controller.getWatchedEpisodes(widget.movie.slug);
+        
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Danh sách tập phim',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
-              onPressed: () {
-                // In thông tin chi tiết ra Console
-                print('═══════════════════════════════════════');
-                print('🎬 THÔNG TIN TẬP PHIM');
-                print('═══════════════════════════════════════');
-                print('📺 Phim: ${widget.movie.name}');
-                print('🖥️  Server: ${selectedServer.serverName}');
-                print('📝 Tập: ${episode.name}');
-                print('🔗 Slug: ${episode.slug}');
-                print('📄 Filename: ${episode.filename}');
-                print('🎥 Link M3U8: ${episode.linkM3u8}');
-                print('═══════════════════════════════════════\n');
+            ),
+            SizedBox(height: 12),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: NeverScrollableScrollPhysics(),
+              itemCount: episodes.length,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 4,
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                childAspectRatio: 2.2,
+              ),
+              itemBuilder: (context, index) {
+                final episode = episodes[index];
+                final episodeKey = '${selectedServer.serverName}_${episode.name}';
+                final isWatched = watchedEpisodes.contains(episodeKey);
 
-                // Đánh dấu tập này đã xem
-                _markEpisodeAsWatched(selectedServer.serverName, episode.name);
-
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => VideoPlayerScreen(
-                      movieDetail: _movieDetail!,
-                      initialEpisodeIndex: index,
-                      serverIndex: _selectedServerIndex,
-                      initialPosition: (_lastHistory != null && 
-                                       _lastHistory!['episodeIndex'] == index && 
-                                       _lastHistory!['serverIndex'] == _selectedServerIndex)
-                          ? Duration(milliseconds: _lastHistory!['positionMs'] ?? 0)
-                          : Duration.zero,
+                return ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    // Màu cam cho tập đã xem, xám cho tập chưa xem
+                    backgroundColor: isWatched ? Colors.orange : Colors.grey[900],
+                    padding: EdgeInsets.symmetric(horizontal: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                ).then((_) => _loadWatchHistory());
-              },
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (isWatched)
-                    Icon(
-                      Icons.check_circle,
-                      size: 14,
-                      color: Colors.white,
-                    ),
-                  if (isWatched) SizedBox(width: 4),
-                  Flexible(
-                    child: Text(
+                  onPressed: () {
+                    // Đánh dấu tập này đã xem
+                    controller.markEpisodeAsWatched(
+                      widget.movie.slug,
+                      selectedServer.serverName,
                       episode.name,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
+                    );
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => VideoPlayerScreen(
+                          movieDetail: _movieDetail!,
+                          initialEpisodeIndex: index,
+                          serverIndex: _selectedServerIndex,
+                          initialPosition: (_lastHistory != null && 
+                                           _lastHistory!['episodeIndex'] == index && 
+                                           _lastHistory!['serverIndex'] == _selectedServerIndex)
+                              ? Duration(milliseconds: _lastHistory!['positionMs'] ?? 0)
+                              : Duration.zero,
+                        ),
                       ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    ).then((_) => _loadWatchHistory());
+                  },
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (isWatched)
+                        Icon(
+                          Icons.check_circle,
+                          size: 14,
+                          color: Colors.white,
+                        ),
+                      if (isWatched) SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          episode.name,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            );
-          },
-        ),
-      ],
+                );
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 
