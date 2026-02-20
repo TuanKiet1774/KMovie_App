@@ -130,53 +130,45 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (bool didPop, dynamic result) async {
-        if (didPop) return;
-        final shouldExit = await AppDialogs.showExitConfirm(context);
-        if (shouldExit) SystemNavigator.pop();
-      },
-      child: Scaffold(
-        backgroundColor: Colors.black,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          title: Image.asset('assets/icons/logo.png', height: 35),
-          centerTitle: true,
-        ),
-        body: GetBuilder<MovieController>(
-          builder: (controller) {
-            return Column(
-              children: [
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: () => controller.loadHomeData(),
-                    color: Colors.red,
-                    child: SingleChildScrollView(
-                      physics: ArchiveScrollPhysics(),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildDropdownFilter(controller),
-                          
-                          if (controller.currentSearchKeyword.isNotEmpty)
-                             _buildSearchResults(controller)
-                          else if (_selectedCategory == 'Tất cả')
-                             _buildHomeContent(controller)
-                          else
-                             _buildCategoryGrid(controller),
-                             
-                          SizedBox(height: 50),
-                        ],
-                      ),
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Image.asset('assets/icons/logo.png', height: 35),
+        centerTitle: true,
+      ),
+      body: GetBuilder<MovieController>(
+        builder: (controller) {
+          return Column(
+            children: [
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () => controller.loadHomeData(),
+                  color: Colors.red,
+                  child: SingleChildScrollView(
+                    physics: ArchiveScrollPhysics(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildDropdownFilter(controller),
+                        
+                        if (controller.currentSearchKeyword.isNotEmpty)
+                           _buildSearchResults(controller)
+                        else if (_selectedCategory == 'Tất cả')
+                           _buildHomeContent(controller)
+                        else
+                           _buildCategoryGrid(controller),
+                           
+                        SizedBox(height: 50),
+                      ],
                     ),
                   ),
                 ),
-              ],
-            );
-          },
-        ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

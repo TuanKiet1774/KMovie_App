@@ -28,8 +28,17 @@ class _MainScreenState extends State<MainScreen> {
       canPop: false,
       onPopInvokedWithResult: (bool didPop, dynamic result) async {
         if (didPop) return;
-        final shouldExit = await AppDialogs.showExitConfirm(context);
-        if (shouldExit) SystemNavigator.pop();
+        
+        if (_selectedIndex != 0) {
+          // Nếu không phải ở tab Home, thì chuyển về tab Home (index 0)
+          setState(() {
+            _selectedIndex = 0;
+          });
+        } else {
+          // Nếu đang ở tab Home, mới hiện bảng xác nhận thoát
+          final shouldExit = await AppDialogs.showExitConfirm(context);
+          if (shouldExit) SystemNavigator.pop();
+        }
       },
       child: Scaffold(
         backgroundColor: Colors.black,
