@@ -78,44 +78,6 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     }
   }
 
-  void _showWatchDialog() {
-    if (_movieDetail == null || _movieDetail!.episodes.isEmpty) {
-      AppDialogs.showError(context, "Không có tập phim nào để xem.");
-      return;
-    }
-
-    // Nếu có lịch sử, cho phép tiếp tục xem
-    if (_lastHistory != null) {
-      _resumeWatching();
-      return;
-    }
-
-    final selectedServer = _movieDetail!.episodes[_selectedServerIndex];
-    if (selectedServer.serverData.isEmpty) {
-      AppDialogs.showError(context, "Không có tập phim nào khả dụng.");
-      return;
-    }
-
-    // Đánh dấu tập đầu tiên đã xem
-    _movieController.markEpisodeAsWatched(
-      widget.movie.slug,
-      selectedServer.serverName,
-      selectedServer.serverData[0].name,
-    );
-
-    _openPlayer(0, _selectedServerIndex);
-  }
-
-  void _resumeWatching() {
-    if (_lastHistory == null) return;
-    
-    final episodeIndex = _lastHistory!['episodeIndex'] ?? 0;
-    final serverIndex = _lastHistory!['serverIndex'] ?? 0;
-    final positionMs = _lastHistory!['positionMs'] ?? 0;
-
-    _openPlayer(episodeIndex, serverIndex, position: Duration(milliseconds: positionMs));
-  }
-
   void _openPlayer(int episodeIndex, int serverIndex, {Duration position = Duration.zero}) {
     Navigator.push(
       context,
@@ -339,8 +301,8 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
             SizedBox(height: 16),
             _buildEpisodesSection(),
           ],
-          SizedBox(height: 32),
-          _buildWatchButton(),
+          // Thêm khoảng trống ở cuối
+          SizedBox(height: 80),
         ],
       ),
     );
@@ -662,34 +624,6 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
           ],
         );
       },
-    );
-  }
-
-  Widget _buildWatchButton() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 15.0, right: 10.0, left: 10.0),
-      child: Container(
-        width: double.infinity,
-        child: ElevatedButton.icon(
-          onPressed: _showWatchDialog,
-          icon: Icon(Icons.play_arrow, color: Colors.white, size: 24),
-          label: Text(
-            _lastHistory != null 
-                ? 'Tiếp tục xem (${_lastHistory!['episodeName']})' 
-                : 'Xem phim',
-            style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red,
-            foregroundColor: Colors.white,
-            padding: EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            elevation: 4,
-          ),
-        ),
-      ),
     );
   }
 }

@@ -47,6 +47,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
   Timer? _historyTimer; // Timer lưu lịch sử
   bool _isFirstLoad = true;
 
+  // Các biến cho tính năng tự động chuyển tập
+  bool _showNextEpisodeNotice = false;
+  int _countdownSeconds = 20;
+  Timer? _nextEpisodeTimer;
+  bool _isAutoPlayStopped = false;
+
   final List<double> _speedOptions = [
     0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0
   ];
@@ -66,8 +72,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
     ]);
     WakelockPlus.enable(); // Giữ màn hình luôn sáng
     
+    // Đảm bảo wakelock được bật sau khi UI ổn định
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      WakelockPlus.enable();
+    });
+    
     // Bắt đầu lưu lịch sử mỗi 10 giây
-    _historyTimer = Timer.periodic(const Duration(seconds: 10), (_) => _saveWatchHistory());
+    _historyTimer = Timer.periodic(const Duration(seconds: 30), (_) => _saveWatchHistory());
   }
 
   @override
@@ -82,6 +93,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _controller?.dispose();
+    _nextEpisodeTimer?.cancel(); // Hủy countdown timer
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     WakelockPlus.disable(); // Tắt giữ màn hình sáng
@@ -92,6 +104,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
   }
 
   Future<void> _initializeVideo() async {
+    // Reset trạng thái tự động chuyển tập
+    _nextEpisodeTimer?.cancel();
+    setState(() {
+      _showNextEpisodeNotice = false;
+      _countdownSeconds = 20;
+      _isAutoPlayStopped = false;
+    });
+
     if (widget.movieDetail.episodes.isNotEmpty) {
       // Sử dụng server hiện tại thay vì hardcode [0]
       final currentServer = widget.movieDetail.episodes[_currentServerIndex];
@@ -217,16 +237,59 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
         setState(() {
           _isPlaying = isPlaying;
         });
+        
+        // Luôn đảm bảo wakelock được bật khi đang phát
+        if (isPlaying) {
+          WakelockPlus.enable();
+        }
+      }
+
+      // Cập nhật UI theo thời gian thực khi đang phát
+      if (isPlaying) {
+        setState(() {});
+      }
+
+      // Logic tự động chuyển tập (Hiện popup trong 20s cuối)
+      final duration = _controller!.value.duration;
+      final position = _controller!.value.position;
+      final remaining = (duration - position).inSeconds;
+      final currentServer = widget.movieDetail.episodes[_currentServerIndex];
+      final hasNext = currentServer.serverData.length > _currentEpisodeIndex + 1;
+
+      if (hasNext && !_isAutoPlayStopped) {
+        if (!_showNextEpisodeNotice && remaining <= 20 && remaining > 0) {
+          setState(() {
+            _showNextEpisodeNotice = true;
+            _countdownSeconds = remaining > 0 ? remaining : 20;
+          });
+          _startCountdown();
+        } else if (_showNextEpisodeNotice && remaining > 20) {
+          // Người dùng tua ngược lại ngoài vùng 20s
+          setState(() {
+            _showNextEpisodeNotice = false;
+          });
+          _nextEpisodeTimer?.cancel();
+        }
       }
 
       if (isCompleted) {
-        _controller!.removeListener(_videoListener);
-        _goToNextEpisode();
+        if (!_isAutoPlayStopped) {
+          _controller!.removeListener(_videoListener);
+          _goToNextEpisode();
+        } else {
+          // Nếu đã bấm dừng tự động chuyển tập, giữ ở tập hiện tại
+          setState(() {
+            _showControls = true;
+            _isPlaying = false;
+          });
+        }
       }
     }
   }
 
   void _goToNextEpisode() {
+    _nextEpisodeTimer?.cancel(); // Hủy timer nếu đang chạy
+    
     final nextIndex = _currentEpisodeIndex + 1;
     final currentServer = widget.movieDetail.episodes[_currentServerIndex];
 
@@ -236,11 +299,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
         _isLoading = true;
         _hasError = false;
         _errorMessage = '';
+        _showNextEpisodeNotice = false;
+        _isAutoPlayStopped = false;
       });
       _initializeVideo();
     } else {
       setState(() {
         _showControls = true;
+        _showNextEpisodeNotice = false;
       });
     }
   }
@@ -251,6 +317,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
         _controller!.pause();
       } else {
         _controller!.play();
+        WakelockPlus.enable(); // Đảm bảo bật lại khi nhấn play
       }
     }
   }
@@ -563,6 +630,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
 
             if (_showControls && _controller != null && _controller!.value.isInitialized)
               _buildVideoControls(),
+
+            // Thanh thông báo chuyển tập tiếp theo
+            if (_showNextEpisodeNotice)
+              _buildNextEpisodeNotice(),
           ],
         ),
       ),
@@ -753,5 +824,133 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
     } catch (e) {
       print('❌ Lỗi khi đánh dấu tập đã xem: $e');
     }
+  }
+
+  // Bắt đầu đếm ngược chuyển tập
+  void _startCountdown() {
+    _nextEpisodeTimer?.cancel();
+    _nextEpisodeTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_countdownSeconds > 1) {
+        setState(() {
+          _countdownSeconds--;
+        });
+      } else {
+        timer.cancel();
+        // Kiểm tra lại một lần nữa trước khi chuyển tập
+        if (!_isAutoPlayStopped && _controller != null) {
+          _goToNextEpisode();
+        }
+      }
+    });
+  }
+
+  // Widget thông báo chuyển tập tiếp theo
+  Widget _buildNextEpisodeNotice() {
+    final currentServer = widget.movieDetail.episodes[_currentServerIndex];
+    if (currentServer.serverData.length <= _currentEpisodeIndex + 1) return SizedBox.shrink();
+    
+    final nextEpisode = currentServer.serverData[_currentEpisodeIndex + 1];
+    
+    return Positioned(
+      bottom: 120, // Cao hơn thanh tiến trình
+      right: 20,
+      child: AnimatedOpacity(
+        opacity: _showNextEpisodeNotice ? 1.0 : 0.0,
+        duration: Duration(milliseconds: 300),
+        child: Container(
+          width: 280,
+          padding: EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.85),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.red.withOpacity(0.5), width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black54,
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              )
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.play_circle_outline, color: Colors.red, size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    'Tập tiếp theo sau $_countdownSeconds s',
+                    style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                  Spacer(),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _isAutoPlayStopped = true;
+                        _showNextEpisodeNotice = false;
+                      });
+                      _nextEpisodeTimer?.cancel();
+                    },
+                    child: Icon(Icons.close, color: Colors.white, size: 20),
+                  ),
+                ],
+              ),
+              SizedBox(height: 10),
+              Text(
+                nextEpisode.name,
+                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _goToNextEpisode,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: Text('Phát ngay', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _isAutoPlayStopped = true;
+                        _showNextEpisodeNotice = false;
+                      });
+                      _nextEpisodeTimer?.cancel();
+                    },
+                    child: Text('Dừng lại', style: TextStyle(color: Colors.white60)),
+                  ),
+                ],
+              ),
+              SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: LinearProgressIndicator(
+                  value: _countdownSeconds / 20,
+                  backgroundColor: Colors.white10,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                  minHeight: 2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
