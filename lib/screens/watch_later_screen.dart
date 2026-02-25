@@ -14,11 +14,20 @@ class WatchLaterScreen extends StatefulWidget {
 }
 
 class _WatchLaterScreenState extends State<WatchLaterScreen> {
+  // Controller để quản lý việc đóng thẻ khác khi một thẻ được mở
+  String? _currentlyOpenSlug;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Get.find<MovieController>().loadWatchLater();
+    });
+  }
+
+  void _onSlidableOpen(String slug) {
+    setState(() {
+      _currentlyOpenSlug = slug;
     });
   }
 
@@ -63,6 +72,9 @@ class _WatchLaterScreenState extends State<WatchLaterScreen> {
                 final movie = controller.watchLaterMovies[index];
                 return SlidableView(
                   key: Key('watch_later_${movie.slug}'),
+                  slug: movie.slug,
+                  currentlyOpenSlug: _currentlyOpenSlug,
+                  onOpen: _onSlidableOpen,
                   onDelete: () => _showDeleteDialog(context, controller, movie),
                   child: Container(
                     margin: EdgeInsets.only(bottom: 16),
@@ -146,7 +158,7 @@ class _WatchLaterScreenState extends State<WatchLaterScreen> {
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,
                                         ),
-                                        maxLines: 1, // Chỉnh lại 1 dòng để hiện ... khi dài quá
+                                        maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                       SizedBox(height: 6),
@@ -241,8 +253,18 @@ class _WatchLaterScreenState extends State<WatchLaterScreen> {
 class SlidableView extends StatefulWidget {
   final Widget child;
   final VoidCallback onDelete;
+  final String slug;
+  final String? currentlyOpenSlug;
+  final Function(String) onOpen;
 
-  const SlidableView({Key? key, required this.child, required this.onDelete}) : super(key: key);
+  const SlidableView({
+    Key? key,
+    required this.child,
+    required this.onDelete,
+    required this.slug,
+    required this.currentlyOpenSlug,
+    required this.onOpen,
+  }) : super(key: key);
 
   @override
   _SlidableViewState createState() => _SlidableViewState();
@@ -252,10 +274,20 @@ class _SlidableViewState extends State<SlidableView> {
   double _offset = 0;
   final double _actionWidth = 80;
 
+  @override
+  void didUpdateWidget(SlidableView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Nếu có thẻ khác được mở, đóng thẻ hiện tại nếu nó đang mở
+    if (widget.currentlyOpenSlug != widget.slug && _offset != 0) {
+      setState(() {
+        _offset = 0;
+      });
+    }
+  }
+
   void _onHorizontalDragUpdate(DragUpdateDetails details) {
     setState(() {
       _offset += details.delta.dx;
-      // Cho phép lướt cả trái và phải trong phạm vi nút xóa
       _offset = _offset.clamp(-_actionWidth, _actionWidth);
     });
   }
@@ -264,8 +296,10 @@ class _SlidableViewState extends State<SlidableView> {
     setState(() {
       if (_offset < -_actionWidth / 2) {
         _offset = -_actionWidth;
+        widget.onOpen(widget.slug);
       } else if (_offset > _actionWidth / 2) {
         _offset = _actionWidth;
+        widget.onOpen(widget.slug);
       } else {
         _offset = 0;
       }
@@ -276,7 +310,6 @@ class _SlidableViewState extends State<SlidableView> {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Nền nút xóa (Hiển thị tùy theo hướng lướt)
         Positioned.fill(
           child: Container(
             margin: EdgeInsets.only(bottom: 16),
@@ -292,12 +325,13 @@ class _SlidableViewState extends State<SlidableView> {
             ),
           ),
         ),
-        // Thẻ phim phía trên
         GestureDetector(
           onHorizontalDragUpdate: _onHorizontalDragUpdate,
           onHorizontalDragEnd: _onHorizontalDragEnd,
+          behavior: HitTestBehavior.opaque,
           child: AnimatedContainer(
-            duration: Duration(milliseconds: 100),
+            duration: Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
             transform: Matrix4.translationValues(_offset, 0, 0),
             child: widget.child,
           ),
