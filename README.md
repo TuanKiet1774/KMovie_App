@@ -22,9 +22,9 @@
 
 <div align="center"><img width="200" height="200" alt="logoapp" style="border-radius: 10px;" src="https://github.com/user-attachments/assets/89f1e776-c698-4707-ac99-cfe25f63dde9" /></div>
 
-### Demo
+### Demo giao diện
 
-<img width="2000" height="1106" alt="image" src="https://github.com/user-attachments/assets/55edc359-0de0-4cce-aa22-a92a449f433c" />
+<img width="2000" height="737" alt="image" src="https://github.com/user-attachments/assets/21c65cb0-4fcd-42ef-bf04-9aecf8447431" />
 
 ## 🚀 Hướng dẫn cài đặt
 
