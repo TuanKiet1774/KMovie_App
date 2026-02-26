@@ -237,16 +237,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
         setState(() {
           _isPlaying = isPlaying;
         });
-        
-        // Luôn đảm bảo wakelock được bật khi đang phát
-        if (isPlaying) {
-          WakelockPlus.enable();
-        }
       }
 
-      // Cập nhật UI theo thời gian thực khi đang phát
+      // Khi video đang phát, đảm bảo UI cập nhật và màn hình luôn sáng
       if (isPlaying) {
         setState(() {});
+        WakelockPlus.enable(); 
       }
 
       // Logic tự động chuyển tập (Hiện popup trong 20s cuối)
