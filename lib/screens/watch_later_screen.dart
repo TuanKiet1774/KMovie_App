@@ -42,167 +42,128 @@ class _WatchLaterScreenState extends State<WatchLaterScreen> {
       ),
       body: GetBuilder<MovieController>(
         builder: (controller) {
-          if (controller.isWatchLaterLoading && controller.watchLaterMovies.isEmpty) {
-            return Center(child: CircularProgressIndicator(color: Colors.red));
-          }
+          return RefreshIndicator(
+            onRefresh: () => controller.loadWatchLater(),
+            color: Colors.red,
+            child: _buildContent(context, controller),
+          );
+        },
+      ),
+    );
+  }
 
-          if (controller.watchLaterMovies.isEmpty) {
-            return Center(
+  Widget _buildContent(BuildContext context, MovieController controller) {
+    if (controller.isWatchLaterLoading && controller.watchLaterMovies.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.7,
+            child: Center(child: CircularProgressIndicator(color: Colors.red)),
+          ),
+        ],
+      );
+    }
+
+    if (controller.watchLaterMovies.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.7,
+            child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.movie_filter, size: 80, color: Colors.grey[800]),
                   SizedBox(height: 16),
                   Text(
-                    "Chưa có phim nào trong danh sách xem sau.",
+                    "Danh sách trống",
                     style: TextStyle(color: Colors.grey, fontSize: 16),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    "Vuốt để tải lại",
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
                   ),
                 ],
               ),
-            );
-          }
+            ),
+          ),
+        ],
+      );
+    }
 
-          return RefreshIndicator(
-            onRefresh: () => controller.loadWatchLater(),
-            color: Colors.red,
-            child: ListView.builder(
-              padding: EdgeInsets.all(16),
-              itemCount: controller.watchLaterMovies.length,
-              itemBuilder: (context, index) {
-                final movie = controller.watchLaterMovies[index];
-                return SlidableView(
-                  key: Key('watch_later_${movie.slug}'),
-                  slug: movie.slug,
-                  currentlyOpenSlug: _currentlyOpenSlug,
-                  onOpen: _onSlidableOpen,
-                  onDelete: () => _showDeleteDialog(context, controller, movie),
-                  child: Container(
-                    margin: EdgeInsets.only(bottom: 16),
-                    height: 140,
-                    decoration: BoxDecoration(
-                      color: Color(0xFF1E1E1E),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
-                          blurRadius: 10,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => MovieDetailScreen(movie: movie),
-                              ),
-                            );
-                          },
-                          child: Row(
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.all(16),
+      itemCount: controller.watchLaterMovies.length,
+      itemBuilder: (context, index) {
+        final movie = controller.watchLaterMovies[index];
+        return SlidableView(
+          key: Key('watch_later_${movie.slug}'),
+          slug: movie.slug,
+          currentlyOpenSlug: _currentlyOpenSlug,
+          onOpen: _onSlidableOpen,
+          onDelete: () => _showDeleteDialog(context, controller, movie),
+          child: Container(
+            margin: EdgeInsets.only(bottom: 16),
+            height: 140,
+            decoration: BoxDecoration(
+              color: Color(0xFF1E1E1E),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MovieDetailScreen(movie: movie),
+                      ),
+                    );
+                  },
+                  child: Row(
+                    children: [
+                      Hero(
+                        tag: 'poster_${movie.slug}',
+                        child: Container(
+                          width: 100,
+                          height: double.infinity,
+                          child: Stack(
+                            fit: StackFit.expand,
                             children: [
-                              // Poster Section
-                              Hero(
-                                tag: 'poster_${movie.slug}',
-                                child: Container(
-                                  width: 100,
-                                  height: double.infinity,
-                                  child: Stack(
-                                    fit: StackFit.expand,
-                                    children: [
-                                      movie.posterUrl.isNotEmpty
-                                          ? Image.network(
-                                              movie.posterUrl,
-                                              fit: BoxFit.cover,
-                                              errorBuilder: (context, error, stackTrace) => Container(
-                                                color: Colors.grey[900],
-                                                child: Icon(Icons.movie, color: Colors.grey),
-                                              ),
-                                            )
-                                          : Container(
-                                              color: Colors.grey[900],
-                                              child: Icon(Icons.movie, color: Colors.grey),
-                                            ),
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            begin: Alignment.centerLeft,
-                                            end: Alignment.centerRight,
-                                            colors: [
-                                              Colors.transparent,
-                                              Color(0xFF1E1E1E).withOpacity(0.1),
-                                            ],
-                                          ),
-                                        ),
+                              movie.posterUrl.isNotEmpty
+                                  ? Image.network(
+                                      movie.posterUrl,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) => Container(
+                                        color: Colors.grey[900],
+                                        child: Icon(Icons.movie, color: Colors.grey),
                                       ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              // Info Section
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(12.0),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        movie.name,
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      SizedBox(height: 6),
-                                      Row(
-                                        children: [
-                                          Container(
-                                            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: Colors.red.withOpacity(0.2),
-                                              borderRadius: BorderRadius.circular(4),
-                                            ),
-                                            child: Text(
-                                              movie.quality,
-                                              style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold),
-                                            ),
-                                          ),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            '${movie.year}',
-                                            style: TextStyle(color: Colors.grey[400], fontSize: 13),
-                                          ),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            '•',
-                                            style: TextStyle(color: Colors.grey[600]),
-                                          ),
-                                          SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              movie.language,
-                                              style: TextStyle(color: Colors.grey[400], fontSize: 13),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      SizedBox(height: 8),
-                                      Text(
-                                        movie.description,
-                                        style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
+                                    )
+                                  : Container(
+                                      color: Colors.grey[900],
+                                      child: Icon(Icons.movie, color: Colors.grey),
+                                    ),
+                              Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                    colors: [
+                                      Colors.transparent,
+                                      Color(0xFF1E1E1E).withOpacity(0.1),
                                     ],
                                   ),
                                 ),
@@ -211,14 +172,78 @@ class _WatchLaterScreenState extends State<WatchLaterScreen> {
                           ),
                         ),
                       ),
-                    ),
+                      // Info Section
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                movie.name,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      movie.quality,
+                                      style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    '${movie.year}',
+                                    style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    '•',
+                                    style: TextStyle(color: Colors.grey[600]),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      movie.language,
+                                      style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                movie.description,
+                                style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                );
-              },
+                ),
+              ),
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 

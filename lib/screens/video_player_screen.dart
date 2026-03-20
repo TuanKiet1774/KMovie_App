@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../models/movie_detail.dart';
 import '../controllers/movie_controller.dart';
+import '../controllers/connectivity_controller.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   final MovieDetail movieDetail;
@@ -46,6 +47,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
   Timer? _seekIconTimer;
   Timer? _historyTimer; // Timer lưu lịch sử
   bool _isFirstLoad = true;
+  Worker? _connectivityWorker;
 
   // Các biến cho tính năng tự động chuyển tập
   bool _showNextEpisodeNotice = false;
@@ -73,12 +75,20 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
     WakelockPlus.enable(); // Giữ màn hình luôn sáng
     
     // Đảm bảo wakelock được bật sau khi UI ổn định
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      WakelockPlus.enable();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await WakelockPlus.enable();
     });
     
     // Bắt đầu lưu lịch sử mỗi 10 giây
     _historyTimer = Timer.periodic(const Duration(seconds: 30), (_) => _saveWatchHistory());
+
+    // Tự động tải lại khi có mạng
+    _connectivityWorker = ever(Get.find<ConnectivityController>().isConnectedRx, (bool connected) {
+      if (connected && _hasError && mounted) {
+        print('🌐 Đang tải lại video sau khi khôi phục mạng...');
+        _initializeVideo();
+      }
+    });
   }
 
   @override
@@ -99,6 +109,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
     WakelockPlus.disable(); // Tắt giữ màn hình sáng
     _seekIconTimer?.cancel();
     _historyTimer?.cancel();
+    _connectivityWorker?.dispose();
     _saveWatchHistory(); // Lưu lần cuối trước khi thoát
     super.dispose();
   }
@@ -106,6 +117,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
   Future<void> _initializeVideo() async {
     // Reset trạng thái tự động chuyển tập
     _nextEpisodeTimer?.cancel();
+    await WakelockPlus.enable(); // Ensure screen stays on while loading
     setState(() {
       _showNextEpisodeNotice = false;
       _countdownSeconds = 20;
@@ -180,7 +192,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
           _controller!.addListener(_videoListener);
           
           // Đảm bảo wakelock được bật khi bắt đầu phát
-          WakelockPlus.enable();
+          await WakelockPlus.enable();
 
           // Đánh dấu tập này đã xem
           _markCurrentEpisodeAsWatched();
@@ -783,6 +795,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
   Future<void> _saveWatchHistory() async {
     if (_controller == null || !_controller!.value.isInitialized) return;
 
+    // Chỉ lưu lịch sử nếu phim nằm trong danh sách "Xem Sau"
+    final movieController = Get.find<MovieController>();
+    if (!movieController.isMovieInWatchLater(widget.movieDetail.slug)) {
+      return;
+    }
+
     try {
       final prefs = await SharedPreferences.getInstance();
       final historyData = {
@@ -807,6 +825,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
 
   // Đánh dấu tập hiện tại là đã xem
   Future<void> _markCurrentEpisodeAsWatched() async {
+    // Chỉ đánh dấu tập đã xem nếu phim nằm trong danh sách "Xem Sau"
+    final movieController = Get.find<MovieController>();
+    if (!movieController.isMovieInWatchLater(widget.movieDetail.slug)) {
+      return;
+    }
+
     try {
       final currentServer = widget.movieDetail.episodes[_currentServerIndex];
       final episodeData = currentServer.serverData[_currentEpisodeIndex];

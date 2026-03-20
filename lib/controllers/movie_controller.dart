@@ -10,6 +10,10 @@ class MovieController extends GetxController {
   List<Movie> _watchLaterMovies = [];
   List<Movie> get watchLaterMovies => _watchLaterMovies;
 
+  bool isMovieInWatchLater(String slug) {
+    return _watchLaterMovies.any((m) => m.slug == slug);
+  }
+
   // Quản lý tập đã xem theo slug phim
   final Map<String, Set<String>> _watchedEpisodesByUser = {};
   Set<String> getWatchedEpisodes(String slug) => _watchedEpisodesByUser[slug] ?? {};
@@ -188,10 +192,30 @@ class MovieController extends GetxController {
 
     try {
       await MovieApiService.removeFromWatchLater(deviceId, slug);
-      print('Đã xóa phim $slug khỏi danh sách Xem Sau.');
+      
+      // Xóa dữ liệu cục bộ liên quan đến phim này để tiết kiệm dữ liệu
+      final prefs = await SharedPreferences.getInstance();
+      
+      // 1. Xóa lịch sử (Vị trí xem gần nhất)
+      await prefs.remove('history_$slug');
+      
+      // 2. Xóa danh sách tập đã xem
+      await prefs.remove('watched_$slug');
+      _watchedEpisodesByUser.remove(slug);
+      
+      // 3. Xóa tất cả vị trí xem của từng tập
+      final keys = prefs.getKeys();
+      for (final key in keys) {
+        if (key.startsWith('pos_${slug}_')) {
+          await prefs.remove(key);
+        }
+      }
+
+      print('Đã xóa phim $slug và các dữ liệu liên quan (lịch sử, tập đã xem, vị trí).');
+      update();
     } catch (e) {
       print('Lỗi khi xóa khỏi Xem Sau: $e');
-      throw e; // Re-throw to handle in UI
+      throw e;
     }
   }
 
@@ -210,6 +234,11 @@ class MovieController extends GetxController {
 
   // Đánh dấu tập đã xem và thông báo realtime
   Future<void> markEpisodeAsWatched(String movieSlug, String serverName, String episodeName) async {
+    // Chỉ đánh dấu tập đã xem nếu phim nằm trong danh sách "Xem Sau"
+    if (!isMovieInWatchLater(movieSlug)) {
+      return;
+    }
+
     try {
       final prefs = await SharedPreferences.getInstance();
       final key = 'watched_$movieSlug';
