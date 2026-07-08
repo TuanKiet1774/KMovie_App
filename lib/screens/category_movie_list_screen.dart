@@ -20,7 +20,7 @@ class CategoryMovieListScreen extends StatefulWidget {
 
 class _CategoryMovieListScreenState extends State<CategoryMovieListScreen> {
   final List<Movie> _movies = [];
-  List<Movie> _filteredMovies = []; // List for local search
+  List<Movie> _filteredMovies = []; 
   
   bool _isLoading = false;
   bool _hasMore = true;
@@ -89,11 +89,9 @@ class _CategoryMovieListScreenState extends State<CategoryMovieListScreen> {
       } else {
         setState(() {
           _movies.addAll(newMovies);
-          // Update filtered list as well if not searching
           if (_searchKeyword.isEmpty) {
             _filteredMovies = List.from(_movies);
           } else {
-             // Re-apply filter on new data (though usually infinite scroll is off)
              _onSearchChanged(_searchKeyword);
           }
           _currentPage++;

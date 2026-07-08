@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:get/get.dart';
 import 'controllers/movie_controller.dart';
 import 'controllers/connectivity_controller.dart';
-import 'screens/home_screen.dart';
-import 'screens/main_screen.dart';
 import 'screens/splash_screen.dart';
 
 void main() async {

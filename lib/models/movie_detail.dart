@@ -40,23 +40,22 @@ class MovieDetail {
     return MovieDetail.fromJson(movieJson, episodesJson);
   }
 
-  // Chuyển đổi từ JSON sang đối tượng MovieDetail
   factory MovieDetail.fromJson(Map<String, dynamic> movieJson, List<dynamic> episodesJson) {
     return MovieDetail(
-      name: movieJson['name'] ?? '',
-      slug: movieJson['slug'] ?? '',
-      posterUrl: movieJson['poster_url'] ?? '',
-      description: movieJson['content'] ?? '',
-      year: movieJson['year'] ?? 0,
+      name: movieJson['name']?.toString() ?? '',
+      slug: movieJson['slug']?.toString() ?? '',
+      posterUrl: movieJson['poster_url']?.toString() ?? '',
+      description: movieJson['content']?.toString() ?? '',
+      year: movieJson['year'] is int ? movieJson['year'] : (int.tryParse(movieJson['year']?.toString() ?? '') ?? 0),
       categories: _parseCategories(movieJson['category']),
-      quality: movieJson['quality'] ?? '',
-      language: movieJson['lang'] ?? '',
-      episodeCount: movieJson['episode_total'] ?? '',
+      quality: movieJson['quality']?.toString() ?? '',
+      language: movieJson['lang']?.toString() ?? '',
+      episodeCount: movieJson['episode_total']?.toString() ?? '',
       episodes: _parseEpisodes(episodesJson),
       director: _parseDirector(movieJson['director']),
       actors: _parseActors(movieJson['actor']),
       country: _parseCountry(movieJson['country']),
-      time: int.tryParse(movieJson['time'].toString()) ?? 0,
+      time: int.tryParse(movieJson['time']?.toString() ?? '') ?? 0,
     );
   }
 

@@ -41,18 +41,18 @@ class Movie {
     }
 
     return Movie(
-      name: json['name'] ?? '',
-      slug: json['slug'] ?? '',
+      name: json['name']?.toString() ?? '',
+      slug: json['slug']?.toString() ?? '',
       posterUrl: resolvePosterUrl(json['poster_url'] ?? json['thumb_url']),
-      description: json['content'] ?? '',
+      description: json['content']?.toString() ?? '',
       year: parseYear(),
       categories: (json['category'] as List<dynamic>?)
           ?.map((x) => x['name']?.toString() ?? '')
           .where((name) => name.isNotEmpty)
           .toList() ??
           [],
-      quality: json['quality'] ?? '',
-      language: json['lang'] ?? 'Vietsub',
+      quality: json['quality']?.toString() ?? '',
+      language: json['lang']?.toString() ?? 'Vietsub',
     );
   }
 

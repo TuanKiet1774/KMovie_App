@@ -33,10 +33,10 @@ class EpisodeData {
   // Chuyển đổi từ JSON sang đối tượng Episode
   factory EpisodeData.fromJson(Map<String, dynamic> json) {
     return EpisodeData(
-      name: json['name'] ?? '',
-      slug: json['slug'] ?? '',
-      filename: json['filename'] ?? '',
-      linkM3u8: json['link_m3u8'] ?? '',
+      name: json['name']?.toString() ?? '',
+      slug: json['slug']?.toString() ?? '',
+      filename: json['filename']?.toString() ?? '',
+      linkM3u8: json['link_m3u8']?.toString() ?? '',
     );
   }
 }
