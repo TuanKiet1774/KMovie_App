@@ -1,6 +1,18 @@
 import 'episode.dart';
 
 class MovieDetail {
+  /// Xóa tất cả thẻ HTML và decode HTML entities
+  static String stripHtml(String html) {
+    return html
+        .replaceAll(RegExp(r'<[^>]*>'), '')
+        .replaceAll('&amp;', '&')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#39;', "'")
+        .replaceAll('&nbsp;', ' ')
+        .trim();
+  }
   final String name;
   final String slug;
   final String posterUrl;
@@ -45,7 +57,7 @@ class MovieDetail {
       name: movieJson['name']?.toString() ?? '',
       slug: movieJson['slug']?.toString() ?? '',
       posterUrl: movieJson['poster_url']?.toString() ?? '',
-      description: movieJson['content']?.toString() ?? '',
+      description: stripHtml(movieJson['content']?.toString() ?? ''),
       year: movieJson['year'] is int ? movieJson['year'] : (int.tryParse(movieJson['year']?.toString() ?? '') ?? 0),
       categories: _parseCategories(movieJson['category']),
       quality: movieJson['quality']?.toString() ?? '',

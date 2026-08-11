@@ -1,4 +1,16 @@
 class Movie {
+  /// Xóa tất cả thẻ HTML và decode HTML entities
+  static String stripHtml(String html) {
+    return html
+        .replaceAll(RegExp(r'<[^>]*>'), '')
+        .replaceAll('&amp;', '&')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#39;', "'")
+        .replaceAll('&nbsp;', ' ')
+        .trim();
+  }
   final String name;
   final String slug;
   final String posterUrl;
@@ -44,7 +56,7 @@ class Movie {
       name: json['name']?.toString() ?? '',
       slug: json['slug']?.toString() ?? '',
       posterUrl: resolvePosterUrl(json['poster_url'] ?? json['thumb_url']),
-      description: json['content']?.toString() ?? '',
+      description: stripHtml(json['content']?.toString() ?? ''),
       year: parseYear(),
       categories: (json['category'] as List<dynamic>?)
           ?.map((x) => x['name']?.toString() ?? '')
