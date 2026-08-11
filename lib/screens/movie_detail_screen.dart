@@ -358,10 +358,25 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
     );
   }
 
+  /// Xóa tất cả thẻ HTML (vd: <p>, <br>, <strong>...) khỏi chuỗi văn bản
+  String _stripHtml(String html) {
+    return html
+        .replaceAll(RegExp(r'<[^>]*>'), '') // bỏ thẻ HTML
+        .replaceAll('&amp;', '&')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#39;', "'")
+        .replaceAll('&nbsp;', ' ')
+        .trim();
+  }
+
   Widget _buildDescriptionSection() {
-    final description = (_movieDetail != null && _movieDetail!.description.isNotEmpty)
+    final rawDescription = (_movieDetail != null && _movieDetail!.description.isNotEmpty)
         ? _movieDetail!.description
         : widget.movie.description;
+
+    final description = _stripHtml(rawDescription);
 
     return Theme(
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),

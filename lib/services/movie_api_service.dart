@@ -6,7 +6,8 @@ import '../models/movie_detail.dart';
 class MovieApiService {
   // URL cơ sở của API
   static const String baseUrl = 'https://phimapi.com';
-  static const String backendUrl = 'https://movie-be-dz6l.onrender.com';
+  // static const String backendUrl = 'https://movie-be-dz6l.onrender.com';
+  static const String backendUrl = 'https://k-movie-be.vercel.app';
 
   // --- Watch Later API ---
 
