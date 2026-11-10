@@ -1,4 +1,4 @@
-# 🎬 K-Movie - Ứng Dụng Xem Phim Trực Tuyến
+# K-Movie - Ứng Dụng Xem Phim Trực Tuyến
 
 <p align="center">
   <img src="assets/icons/logoapp.png" alt="K-Movie Logo" width="120" style="border-radius: 24px; box-shadow: 0 4px 20px rgba(255, 0, 0, 0.3);" />
