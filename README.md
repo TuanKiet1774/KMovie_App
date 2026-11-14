@@ -185,4 +185,5 @@ kmovie/
   - Điểm nhấn đỏ rực rỡ (`#FF0000`, `Colors.redAccent`) tạo phong cách ấn tượng và nổi bật tương tự Netflix.
 - **Trải nghiệm điều hướng thông minh:** Tự động điều hướng về màn hình Home trước khi hiển thị hộp thoại xác nhận thoát ứng dụng (`PopScope`).
 
-<img width="2000" height="737" alt="image" src="https://github.com/user-attachments/assets/21c65cb0-4fcd-42ef-bf04-9aecf8447431" />
+<img width="2000" height="889" alt="image" src="https://github.com/user-attachments/assets/b21e869d-f035-4562-bf6d-83b56964ad39" />
+
