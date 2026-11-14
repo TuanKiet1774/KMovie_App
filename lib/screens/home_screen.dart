@@ -1,19 +1,17 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:kmovie/screens/watch_later_screen.dart';
 
 import '../controllers/movie_controller.dart';
 import '../models/movie.dart';
 import '../widgets/movie_card.dart';
-import '../widgets/search_bar_widget.dart';
-import '../widgets/app_dialogs.dart';
+import '../widgets/category_filter_bar.dart';
 import 'movie_detail_screen.dart';
 import 'category_movie_list_screen.dart';
-import 'search_screen.dart';
 
 class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
   @override
   _HomeScreenState createState() => _HomeScreenState();
 }
@@ -23,90 +21,23 @@ class _HomeScreenState extends State<HomeScreen> {
   final PageController _bannerPageController = PageController(viewportFraction: 0.85);
   Timer? _bannerTimer;
   int _bannerIndex = 0;
-  
-  // Search handling
-  Timer? _debounce;
-  final TextEditingController _searchController = TextEditingController();
-
-  // Danh sách thể loại cho Dropdown
-  final List<String> _categories = [
-    'Tất cả',
-    'Hành Động',
-    'Cổ Trang',
-    'Viễn Tưởng',
-    'Tình Cảm',
-    'Tâm Lý',
-    'Thể Thao',
-    'Phiêu Lưu',
-    'Âm Nhạc',
-    'Gia Đình',
-    'Học Đường',
-    'Hài Hước',
-    'Hình Sự',
-    'Võ Thuật',
-    'Khoa Học',
-  ];
-
-  String _getCategorySlug(String category) {
-    // ... maps ...
-    final categoryMap = {
-      'Tất cả': 'all',
-      'Hành Động': 'hanh-dong',
-      'Cổ Trang': 'co-trang',
-      'Viễn Tưởng': 'vien-tuong',
-      'Tình Cảm': 'tinh-cam',
-      'Tâm Lý': 'tam-ly',
-      'Thể Thao': 'the-thao',
-      'Phiêu Lưu': 'phieu-luu',
-      'Âm Nhạc': 'am-nhac',
-      'Gia Đình': 'gia-dinh',
-      'Học Đường': 'hoc-duong',
-      'Hài Hước': 'hai-huoc',
-      'Hình Sự': 'hinh-su',
-      'Võ Thuật': 'vo-thuat',
-      'Khoa Học': 'khoa-hoc',
-    };
-    return categoryMap[category] ?? '';
-  }
 
   @override
   void initState() {
     super.initState();
     _startBannerTimer();
-    // Sync search text if returning from other screen
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-         _searchController.text = Get.find<MovieController>().currentSearchKeyword;
-      }
-    });
   }
 
   void _startBannerTimer() {
-    _bannerTimer = Timer.periodic(Duration(seconds: 5), (timer) {
+    _bannerTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
       if (_bannerPageController.hasClients) {
         int nextPage = _bannerIndex + 1;
         _bannerPageController.animateToPage(
           nextPage,
-          duration: Duration(milliseconds: 800),
+          duration: const Duration(milliseconds: 800),
           curve: Curves.fastOutSlowIn,
         );
       }
-    });
-  }
-  
-  void _onSearchChanged(String query, MovieController controller) {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
-    
-    // Nếu rỗng thì reset ngay lập tức, không cần delay
-    if (query.trim().isEmpty) {
-      if (controller.currentSearchKeyword.isNotEmpty) {
-         controller.searchMovies('');
-      }
-      return;
-    }
-
-    _debounce = Timer(const Duration(milliseconds: 800), () {
-      controller.searchMovies(query);
     });
   }
 
@@ -114,17 +45,13 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _bannerTimer?.cancel();
     _bannerPageController.dispose();
-    _debounce?.cancel();
-    _searchController.dispose();
     super.dispose();
   }
 
-  void _onCategoryChanged(String? newValue, MovieController controller) {
-    if (newValue == null) return;
+  void _onCategoryChanged(String name, String slug, MovieController controller) {
     setState(() {
-      _selectedCategory = newValue;
+      _selectedCategory = name;
     });
-    final slug = _getCategorySlug(newValue);
     controller.loadMoviesByCategory(slug);
   }
 
@@ -151,16 +78,24 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildDropdownFilter(controller),
+                        if (controller.bannerMovies.isNotEmpty)
+                          _buildBannerSlider(controller.bannerMovies),
+
+                        const SizedBox(height: 10),
+
+                        CategoryFilterBar(
+                          selectedCategory: _selectedCategory,
+                          onCategorySelected: (name, slug) => _onCategoryChanged(name, slug, controller),
+                        ),
                         
                         if (controller.currentSearchKeyword.isNotEmpty)
                            _buildSearchResults(controller)
                         else if (_selectedCategory == 'Tất cả')
-                           _buildHomeContent(controller)
+                           _buildHomeCategorySections(controller)
                         else
                            _buildCategoryGrid(controller),
                            
-                        SizedBox(height: 50),
+                        const SizedBox(height: 50),
                       ],
                     ),
                   ),
@@ -173,94 +108,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-
-  
-  Widget _buildDropdownFilter(MovieController controller) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'Thể loại:',
-            style: TextStyle(color: Colors.white70, fontSize: 16),
-          ),
-          SizedBox(width: 10),
-          Expanded(
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: Color(0xFF2A2A2A),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: _selectedCategory,
-                  // Tùy chỉnh menu xổ xuống
-                  dropdownColor: Color(0xFF333333),
-                  borderRadius: BorderRadius.circular(12),
-                  elevation: 8,
-                  menuMaxHeight: 400,
-                  icon: Icon(Icons.arrow_drop_down, color: Colors.white),
-                  isExpanded: true,
-                  style: TextStyle(color: Colors.white, fontSize: 16),
-                  items: _categories.map((String value) {
-                    final bool isSelected = value == _selectedCategory;
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Container(
-                        padding: EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          border: Border(bottom: BorderSide(color: Colors.white10, width: 0.5)),
-                        ),
-                        child: Row(
-                          children: [
-                            Text(
-                              value,
-                              style: TextStyle(
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                color: isSelected ? Colors.redAccent : Colors.white,
-                              ),
-                            ),
-                            if (isSelected) ...[
-                              Spacer(),
-                              Icon(Icons.check, color: Colors.redAccent, size: 16),
-                            ]
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (val) => _onCategoryChanged(val, controller),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHomeContent(MovieController controller) {
-    // 0. Banner Slide
-    // 1. Horizontal Sections (Romance, Historical, Action)
-    
+  Widget _buildHomeCategorySections(MovieController controller) {
     return Column(
       children: [
-        if (controller.bannerMovies.isNotEmpty)
-          _buildBannerSlider(controller.bannerMovies),
-        
-        SizedBox(height: 20),
-        
-        // Loop through the fixed categories in controller
+        const SizedBox(height: 8),
         ...controller.homeCategories.map((slug) {
           final movies = controller.categoryMovies[slug] ?? [];
           final title = controller.categoryTitles[slug] ?? 'Phim';
           
-          if (movies.isEmpty) return SizedBox.shrink();
+          if (movies.isEmpty) return const SizedBox.shrink();
           
           return _buildCategorySection(title, slug, movies);
-        }).toList(),
+        }),
       ],
     );
   }
@@ -271,18 +130,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Text(
-            "Phim Mới Cập Nhật",
-            style: TextStyle(
-              color: Colors.white, 
-              fontSize: 20, 
-              fontWeight: FontWeight.bold,
-              shadows: [Shadow(color: Colors.red, blurRadius: 10)],
-            ),
-          ),
-        ),
         SizedBox(
           height: 220,
           child: PageView.builder(
@@ -334,8 +181,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         fit: StackFit.expand,
                         children: [
                           Image.network(
-                            movie.posterUrl,
+                            movie.thumbUrl.isNotEmpty ? movie.thumbUrl : movie.posterUrl,
                             fit: BoxFit.cover,
+                            alignment: Alignment.topCenter,
                             errorBuilder: (ctx, err, stack) => Container(color: Colors.grey[800]),
                           ),
                           DecoratedBox(

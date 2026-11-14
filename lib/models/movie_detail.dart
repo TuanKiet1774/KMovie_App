@@ -16,6 +16,7 @@ class MovieDetail {
   final String name;
   final String slug;
   final String posterUrl;
+  final String thumbUrl;
   final String description;
   final int year;
   final List<String> categories;
@@ -32,6 +33,7 @@ class MovieDetail {
     required this.name,
     required this.slug,
     required this.posterUrl,
+    this.thumbUrl = '',
     required this.description,
     required this.year,
     required this.categories,
@@ -57,6 +59,7 @@ class MovieDetail {
       name: movieJson['name']?.toString() ?? '',
       slug: movieJson['slug']?.toString() ?? '',
       posterUrl: movieJson['poster_url']?.toString() ?? '',
+      thumbUrl: movieJson['thumb_url']?.toString() ?? '',
       description: stripHtml(movieJson['content']?.toString() ?? ''),
       year: movieJson['year'] is int ? movieJson['year'] : (int.tryParse(movieJson['year']?.toString() ?? '') ?? 0),
       categories: _parseCategories(movieJson['category']),

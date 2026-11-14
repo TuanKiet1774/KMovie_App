@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../models/movie.dart';
 import '../widgets/app_dialogs.dart';
+import '../widgets/app_search_bar.dart';
+import '../widgets/category_filter_bar.dart';
 import '../controllers/movie_controller.dart';
 import 'movie_detail_screen.dart';
 
 class WatchLaterScreen extends StatefulWidget {
   final bool isMainTab;
 
-  const WatchLaterScreen({Key? key, this.isMainTab = false}) : super(key: key);
+  const WatchLaterScreen({super.key, this.isMainTab = false});
 
   @override
   _WatchLaterScreenState createState() => _WatchLaterScreenState();
@@ -17,6 +20,12 @@ class _WatchLaterScreenState extends State<WatchLaterScreen> {
   // Controller để quản lý việc đóng thẻ khác khi một thẻ được mở
   String? _currentlyOpenSlug;
 
+  // Trạng thái tìm kiếm và lọc thể loại
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  String _selectedCategory = 'Tất cả';
+  String _selectedSlug = 'all';
+
   @override
   void initState() {
     super.initState();
@@ -25,15 +34,42 @@ class _WatchLaterScreenState extends State<WatchLaterScreen> {
     });
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   void _onSlidableOpen(String slug) {
     setState(() {
       _currentlyOpenSlug = slug;
     });
   }
 
+  List<Movie> _getFilteredMovies(List<Movie> allMovies) {
+    return allMovies.where((movie) {
+      final query = _searchQuery.trim().toLowerCase();
+      final matchQuery = query.isEmpty ||
+          movie.name.toLowerCase().contains(query) ||
+          movie.slug.toLowerCase().contains(query);
+
+      final matchCategory = _selectedSlug == 'all' ||
+          movie.categories.any((c) {
+            final catLower = c.toLowerCase().trim();
+            final selectedLower = _selectedCategory.toLowerCase().trim();
+            return catLower == selectedLower ||
+                catLower.contains(selectedLower) ||
+                selectedLower.contains(catLower);
+          });
+
+      return matchQuery && matchCategory;
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -42,46 +78,89 @@ class _WatchLaterScreenState extends State<WatchLaterScreen> {
       ),
       body: GetBuilder<MovieController>(
         builder: (controller) {
-          return RefreshIndicator(
-            onRefresh: () => controller.loadWatchLater(),
-            color: Colors.red,
-            child: _buildContent(context, controller),
+          final filteredMovies = _getFilteredMovies(controller.watchLaterMovies);
+
+          return Column(
+            children: [
+              // 1. Ô tìm kiếm tái sử dụng
+              AppSearchBar(
+                controller: _searchController,
+                hintText: 'Tìm trong danh sách xem sau...',
+                margin: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+                onChanged: (val) {
+                  setState(() {
+                    _searchQuery = val;
+                  });
+                },
+                onClear: () {
+                  setState(() {
+                    _searchQuery = '';
+                  });
+                },
+              ),
+
+              // 2. Thanh bộ lọc thể loại tái sử dụng
+              CategoryFilterBar(
+                selectedCategory: _selectedCategory,
+                onCategorySelected: (name, slug) {
+                  setState(() {
+                    _selectedCategory = name;
+                    _selectedSlug = slug;
+                  });
+                },
+                margin: const EdgeInsets.only(top: 2, bottom: 8),
+              ),
+
+              // 3. Danh sách phim Xem sau kèm RefreshIndicator
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () => controller.loadWatchLater(),
+                  color: Colors.red,
+                  child: _buildContent(context, controller, filteredMovies),
+                ),
+              ),
+            ],
           );
         },
       ),
     );
   }
 
-  Widget _buildContent(BuildContext context, MovieController controller) {
+  Widget _buildContent(
+    BuildContext context,
+    MovieController controller,
+    List<Movie> filteredMovies,
+  ) {
     if (controller.isWatchLaterLoading && controller.watchLaterMovies.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           SizedBox(
-            height: MediaQuery.of(context).size.height * 0.7,
-            child: Center(child: CircularProgressIndicator(color: Colors.red)),
+            height: MediaQuery.of(context).size.height * 0.5,
+            child: const Center(child: CircularProgressIndicator(color: Colors.red)),
           ),
         ],
       );
     }
 
+    // Danh sách gốc trống hoàn toàn (chưa lưu phim nào)
     if (controller.watchLaterMovies.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           SizedBox(
-            height: MediaQuery.of(context).size.height * 0.7,
+            height: MediaQuery.of(context).size.height * 0.5,
             child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.movie_filter, size: 80, color: Colors.grey[800]),
-                  SizedBox(height: 16),
-                  Text(
+                  const SizedBox(height: 16),
+                  const Text(
                     "Danh sách trống",
                     style: TextStyle(color: Colors.grey, fontSize: 16),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
                     "Vuốt để tải lại",
                     style: TextStyle(color: Colors.grey[600], fontSize: 12),
@@ -94,12 +173,93 @@ class _WatchLaterScreenState extends State<WatchLaterScreen> {
       );
     }
 
+    // Có phim nhưng sau khi tìm kiếm / lọc thể loại không có kết quả phù hợp
+    if (filteredMovies.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.45,
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.filter_list_off_rounded, size: 70, color: Colors.grey[800]),
+                    const SizedBox(height: 16),
+                    const Text(
+                      "Không tìm thấy phim phù hợp",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _searchQuery.isNotEmpty && _selectedSlug != 'all'
+                          ? 'Không có phim "$_selectedCategory" khớp từ khóa "$_searchQuery"'
+                          : _searchQuery.isNotEmpty
+                              ? 'Không có phim nào khớp với từ khóa "$_searchQuery"'
+                              : 'Chưa có phim nào thuộc thể loại "$_selectedCategory"',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey[500], fontSize: 13),
+                    ),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _searchController.clear();
+                          _searchQuery = '';
+                          _selectedCategory = 'Tất cả';
+                          _selectedSlug = 'all';
+                        });
+                      },
+                      icon: const Icon(Icons.refresh, size: 16, color: Colors.redAccent),
+                      label: const Text(
+                        'Xem tất cả phim',
+                        style: TextStyle(color: Colors.redAccent, fontSize: 13),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.redAccent),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    final hasActiveFilter = _searchQuery.isNotEmpty || _selectedSlug != 'all';
+
     return ListView.builder(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.all(16),
-      itemCount: controller.watchLaterMovies.length,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      itemCount: filteredMovies.length + (hasActiveFilter ? 1 : 0),
       itemBuilder: (context, index) {
-        final movie = controller.watchLaterMovies[index];
+        // Dòng header thông báo kết quả lọc
+        if (hasActiveFilter && index == 0) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12.0),
+            child: Row(
+              children: [
+                Text(
+                  'Tìm thấy ${filteredMovies.length} phim',
+                  style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final movieIndex = hasActiveFilter ? index - 1 : index;
+        final movie = filteredMovies[movieIndex];
+
         return SlidableView(
           key: Key('watch_later_${movie.slug}'),
           slug: movie.slug,
@@ -107,16 +267,16 @@ class _WatchLaterScreenState extends State<WatchLaterScreen> {
           onOpen: _onSlidableOpen,
           onDelete: () => _showDeleteDialog(context, controller, movie),
           child: Container(
-            margin: EdgeInsets.only(bottom: 16),
+            margin: const EdgeInsets.only(bottom: 16),
             height: 140,
             decoration: BoxDecoration(
-              color: Color(0xFF1E1E1E),
+              color: const Color(0xFF1E1E1E),
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
+                  color: Colors.black.withValues(alpha: 0.3),
                   blurRadius: 10,
-                  offset: Offset(0, 4),
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
@@ -137,7 +297,7 @@ class _WatchLaterScreenState extends State<WatchLaterScreen> {
                     children: [
                       Hero(
                         tag: 'poster_${movie.slug}',
-                        child: Container(
+                        child: SizedBox(
                           width: 100,
                           height: double.infinity,
                           child: Stack(
@@ -149,12 +309,12 @@ class _WatchLaterScreenState extends State<WatchLaterScreen> {
                                       fit: BoxFit.cover,
                                       errorBuilder: (context, error, stackTrace) => Container(
                                         color: Colors.grey[900],
-                                        child: Icon(Icons.movie, color: Colors.grey),
+                                        child: const Icon(Icons.movie, color: Colors.grey),
                                       ),
                                     )
                                   : Container(
                                       color: Colors.grey[900],
-                                      child: Icon(Icons.movie, color: Colors.grey),
+                                      child: const Icon(Icons.movie, color: Colors.grey),
                                     ),
                               Container(
                                 decoration: BoxDecoration(
@@ -163,7 +323,7 @@ class _WatchLaterScreenState extends State<WatchLaterScreen> {
                                     end: Alignment.centerRight,
                                     colors: [
                                       Colors.transparent,
-                                      Color(0xFF1E1E1E).withOpacity(0.1),
+                                      const Color(0xFF1E1E1E).withValues(alpha: 0.1),
                                     ],
                                   ),
                                 ),
@@ -182,7 +342,7 @@ class _WatchLaterScreenState extends State<WatchLaterScreen> {
                             children: [
                               Text(
                                 movie.name,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
@@ -190,31 +350,31 @@ class _WatchLaterScreenState extends State<WatchLaterScreen> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              SizedBox(height: 6),
+                              const SizedBox(height: 6),
                               Row(
                                 children: [
                                   Container(
-                                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: Colors.red.withOpacity(0.2),
+                                      color: Colors.red.withValues(alpha: 0.2),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
                                       movie.quality,
-                                      style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold),
+                                      style: const TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold),
                                     ),
                                   ),
-                                  SizedBox(width: 8),
+                                  const SizedBox(width: 8),
                                   Text(
                                     '${movie.year}',
                                     style: TextStyle(color: Colors.grey[400], fontSize: 13),
                                   ),
-                                  SizedBox(width: 8),
+                                  const SizedBox(width: 8),
                                   Text(
                                     '•',
                                     style: TextStyle(color: Colors.grey[600]),
                                   ),
-                                  SizedBox(width: 8),
+                                  const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
                                       movie.language,
@@ -225,7 +385,7 @@ class _WatchLaterScreenState extends State<WatchLaterScreen> {
                                   ),
                                 ],
                               ),
-                              SizedBox(height: 8),
+                              const SizedBox(height: 8),
                               Text(
                                 movie.description,
                                 style: TextStyle(color: Colors.grey[500], fontSize: 12),
@@ -248,19 +408,18 @@ class _WatchLaterScreenState extends State<WatchLaterScreen> {
   }
 
   void _showDeleteDialog(BuildContext context, MovieController controller, dynamic movie) async {
-    final confirmed = await AppDialogs.showConfirm(
-      context: context,
-      title: 'Xóa khỏi danh sách?',
-      content: 'Bạn có muốn xóa "${movie.name}" khỏi danh sách xem sau không?',
-      confirmText: 'Xóa',
-      confirmColor: Colors.red,
+    final confirmed = await AppDialogs.showDeleteWatchLaterConfirm(
+      context,
+      movieName: movie.name,
     );
 
     if (confirmed) {
       if (context.mounted) AppDialogs.showLoading(context, message: 'Đang xóa...');
       try {
         await controller.removeFromWatchLater(movie.slug);
-        await controller.loadWatchLater();
+        if (_currentlyOpenSlug == movie.slug) {
+          _currentlyOpenSlug = null;
+        }
         if (context.mounted) {
           AppDialogs.hideLoading(context);
           AppDialogs.showToast(context, 'Đã xóa khỏi danh sách');
@@ -283,13 +442,13 @@ class SlidableView extends StatefulWidget {
   final Function(String) onOpen;
 
   const SlidableView({
-    Key? key,
+    super.key,
     required this.child,
     required this.onDelete,
     required this.slug,
     required this.currentlyOpenSlug,
     required this.onOpen,
-  }) : super(key: key);
+  });
 
   @override
   _SlidableViewState createState() => _SlidableViewState();
@@ -334,54 +493,124 @@ class _SlidableViewState extends State<SlidableView> {
   @override
   Widget build(BuildContext context) {
     return Stack(
+      clipBehavior: Clip.none,
       children: [
+        // 1. Nền đỏ phía dưới có bo góc 16 tương ứng thẻ phim
         Positioned.fill(
           child: Container(
-            margin: EdgeInsets.only(bottom: 16),
+            margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
               color: Colors.red,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Row(
-              mainAxisAlignment: _offset > 0 ? MainAxisAlignment.start : MainAxisAlignment.end,
+              mainAxisAlignment: _offset >= 0 ? MainAxisAlignment.start : MainAxisAlignment.end,
               children: [
-                _buildDeleteAction(),
+                _buildDeleteActionContent(),
               ],
             ),
           ),
         ),
-        GestureDetector(
-          onHorizontalDragUpdate: _onHorizontalDragUpdate,
-          onHorizontalDragEnd: _onHorizontalDragEnd,
-          behavior: HitTestBehavior.opaque,
-          child: AnimatedContainer(
-            duration: Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
-            transform: Matrix4.translationValues(_offset, 0, 0),
+
+        // 2. Thẻ phim trượt
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          transform: Matrix4.translationValues(_offset, 0, 0),
+          child: GestureDetector(
+            onHorizontalDragUpdate: _onHorizontalDragUpdate,
+            onHorizontalDragEnd: _onHorizontalDragEnd,
+            behavior: HitTestBehavior.deferToChild,
             child: widget.child,
           ),
         ),
+
+        // 3. Lớp phủ tương tác phía trên cùng khi thẻ đã được mở (_offset != 0)
+        if (_offset != 0)
+          Positioned.fill(
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              child: Row(
+                children: [
+                  if (_offset > 0) ...[
+                    // Nút xóa bên TRÁI (khi vuốt sang phải như trong ảnh chụp)
+                    SizedBox(
+                      width: _actionWidth,
+                      height: double.infinity,
+                      child: _buildDeleteButton(),
+                    ),
+                    // Vùng thẻ phim còn lại: chạm vào để đóng thẻ
+                    Expanded(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          setState(() => _offset = 0);
+                        },
+                        onHorizontalDragUpdate: _onHorizontalDragUpdate,
+                        onHorizontalDragEnd: _onHorizontalDragEnd,
+                      ),
+                    ),
+                  ] else ...[
+                    // Vùng thẻ phim còn lại: chạm vào để đóng thẻ
+                    Expanded(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          setState(() => _offset = 0);
+                        },
+                        onHorizontalDragUpdate: _onHorizontalDragUpdate,
+                        onHorizontalDragEnd: _onHorizontalDragEnd,
+                      ),
+                    ),
+                    // Nút xóa bên PHẢI (khi vuốt sang trái)
+                    SizedBox(
+                      width: _actionWidth,
+                      height: double.infinity,
+                      child: _buildDeleteButton(),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
       ],
     );
   }
 
-  Widget _buildDeleteAction() {
-    return InkWell(
-      onTap: () {
-        setState(() => _offset = 0);
-        widget.onDelete();
-      },
-      child: Container(
-        width: _actionWidth,
-        height: double.infinity,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.delete, color: Colors.white),
-            SizedBox(height: 4),
-            Text('Xóa', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-          ],
-        ),
+  // Giao diện tĩnh của nút xóa (icon thùng rác + chữ "Xóa")
+  Widget _buildDeleteActionContent() {
+    return SizedBox(
+      width: _actionWidth,
+      height: double.infinity,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: const [
+          Icon(Icons.delete, color: Colors.white, size: 28),
+          SizedBox(height: 4),
+          Text(
+            'Xóa',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Nút xóa tương tác nhận sự kiện chạm
+  Widget _buildDeleteButton() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          setState(() => _offset = 0);
+          widget.onDelete();
+        },
+        child: _buildDeleteActionContent(),
       ),
     );
   }

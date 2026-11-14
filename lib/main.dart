@@ -9,23 +9,23 @@ void main() async {
 
   Get.put(MovieController());
   Get.put(ConnectivityController());
-  runApp(
-      MovieApp()
-  );
+  runApp(const MovieApp());
 }
 
 class MovieApp extends StatelessWidget {
+  const MovieApp({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return GetMaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'K - Movie',
       theme: ThemeData(
         primarySwatch: Colors.red,
         visualDensity: VisualDensity.adaptivePlatformDensity,
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: Color(0xFF0F0F0F),
-        appBarTheme: AppBarTheme(
+        scaffoldBackgroundColor: const Color(0xFF0F0F0F),
+        appBarTheme: const AppBarTheme(
           backgroundColor: Color(0xFF1A1A1A),
           elevation: 0,
         ),

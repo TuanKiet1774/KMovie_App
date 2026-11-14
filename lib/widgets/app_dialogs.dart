@@ -176,4 +176,16 @@ class AppDialogs {
       confirmColor: Colors.red,
     );
   }
+
+  // Bảng xác nhận xóa phim khỏi danh sách xem sau (mang phong cách modal xác nhận thoát ứng dụng)
+  static Future<bool> showDeleteWatchLaterConfirm(BuildContext context, {required String movieName}) async {
+    return await showConfirm(
+      context: context,
+      title: 'Xóa khỏi xem sau?',
+      content: 'Bạn có chắc chắn muốn xóa phim "$movieName" khỏi danh sách xem sau không?',
+      confirmText: 'Xóa',
+      cancelText: 'Hủy',
+      confirmColor: Colors.red,
+    );
+  }
 }

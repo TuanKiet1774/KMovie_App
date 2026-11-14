@@ -164,6 +164,7 @@ class MovieController extends GetxController {
               name: detail.name,
               slug: detail.slug,
               posterUrl: detail.posterUrl,
+              thumbUrl: detail.thumbUrl.isNotEmpty ? detail.thumbUrl : detail.posterUrl,
               description: detail.description,
               year: detail.year,
               categories: detail.categories,
@@ -210,6 +211,9 @@ class MovieController extends GetxController {
           await prefs.remove(key);
         }
       }
+
+      // Xóa ngay lập tức khỏi danh sách đang hiển thị
+      _watchLaterMovies.removeWhere((m) => m.slug == slug);
 
       print('Đã xóa phim $slug và các dữ liệu liên quan (lịch sử, tập đã xem, vị trí).');
       update();

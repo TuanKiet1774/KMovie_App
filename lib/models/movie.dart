@@ -14,6 +14,7 @@ class Movie {
   final String name;
   final String slug;
   final String posterUrl;
+  final String thumbUrl;
   final String description;
   final int year;
   final List<String> categories;
@@ -24,6 +25,7 @@ class Movie {
     required this.name,
     required this.slug,
     required this.posterUrl,
+    this.thumbUrl = '',
     required this.description,
     required this.year,
     required this.categories,
@@ -33,8 +35,8 @@ class Movie {
 
   // Chuyển đổi từ JSON sang đối tượng Movie
   factory Movie.fromJson(Map<String, dynamic> json) {
-    //Lấy đường dẫn poster
-    String resolvePosterUrl(String? path) {
+    //Lấy đường dẫn ảnh
+    String resolveImageUrl(String? path) {
       if (path == null || path.isEmpty) return '';
       if (path.startsWith('http')) return path;
       return 'https://phimimg.com/$path';
@@ -52,10 +54,14 @@ class Movie {
       return 0;
     }
 
+    final poster = resolveImageUrl(json['poster_url'] ?? json['thumb_url']);
+    final thumb = resolveImageUrl(json['thumb_url'] ?? json['poster_url']);
+
     return Movie(
       name: json['name']?.toString() ?? '',
       slug: json['slug']?.toString() ?? '',
-      posterUrl: resolvePosterUrl(json['poster_url'] ?? json['thumb_url']),
+      posterUrl: poster,
+      thumbUrl: thumb.isNotEmpty ? thumb : poster,
       description: stripHtml(json['content']?.toString() ?? ''),
       year: parseYear(),
       categories: (json['category'] as List<dynamic>?)
