@@ -44,19 +44,18 @@
 - **Thông Tin Sản Xuất:** Hiển thị rõ ràng Đạo diễn, Dàn diễn viên, Quốc gia sản xuất.
 - **Trạng Thái Tập Đã Xem:** Tự động đánh dấu màu cam kèm biểu tượng tích tròn cho các tập phim đã xem.
 
-### 4. Trình Phát Video Cao Cấp (HLS Player)
-- **Truyền Phát Video HLS (.m3u8):** Tối ưu hóa khả năng thích ứng băng thông và chất lượng hình ảnh sắc nét.
+### 4. Trình Phát Video Cao Cấp
+- **Truyền Phát Video:** Tối ưu hóa khả năng thích ứng băng thông và chất lượng hình ảnh sắc nét.
 - **Chuyển Đổi Màn Hình Ngang/Dọc Mượt Mà:** Chế độ ngang (Landscape Immersive) và Chế độ dọc (Portrait Mode).
 - **Cử Chỉ Chạm Đúp (Double-Tap Seek):** Chạm đúp 2 bên màn hình để tua tới/lùi 10 giây nhanh chóng kèm hiệu ứng icon mờ dần.
 - **Tùy Chỉnh Tốc Độ Phát:** Điều chỉnh từ `0.25x` đến `2.0x`.
 - **Tự Động Đếm Ngược Chuyển Tập:** Banner thông báo đếm ngược 20 giây cuối phim để tự động phát tập kế tiếp (hỗ trợ nút hủy hoặc phát ngay).
 - **Lưu Tiến Trình Phát Thông Minh:** Tự động lưu vị trí phút:giây đã xem vào `SharedPreferences`, nhắc người dùng tiếp tục xem đúng đoạn dở dang khi quay lại.
 
-### 5. Danh Sách Xem Sau & Đồng Bộ Cloud
+### 5. Danh Sách Xem Sau
 - **Tìm Kiếm & Lọc Nội Bộ:** Dễ dàng tìm kiếm và lọc theo thể loại ngay trong danh sách xem sau của bạn.
-- **Xóa Nhanh Đa Dạng:** Xóa bằng icon thùng rác trực tiếp hoặc vuốt trượt thẻ phim (Dismissible).
+- **Xóa Nhanh Đa Dạng:** Xóa bằng icon thùng rác trực tiếp hoặc vuốt trượt thẻ phim.
 - **Tự Động Dọn Rác Bộ Nhớ:** Tự động xóa sạch lịch sử xem và vị trí phát của phim khi phim bị xóa khỏi danh sách Xem Sau.
-
 
 ---
 
